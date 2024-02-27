@@ -40,18 +40,18 @@ def play_human(env):
 PAWN_BOARD = np.array([[0] * 8] * 8, dtype=np.int8)
 # PAWN_BOARD[1, 0] = -PAWN_ID
 # PAWN_BOARD[1, 1] = -PAWN_ID
-PAWN_BOARD[1, 2] = -PAWN_ID
+# PAWN_BOARD[1, 2] = -PAWN_ID
 PAWN_BOARD[1, 3] = -PAWN_ID
 PAWN_BOARD[1, 4] = -PAWN_ID
-PAWN_BOARD[1, 5] = -PAWN_ID
+# PAWN_BOARD[1, 5] = -PAWN_ID
 # PAWN_BOARD[1, 6] = -PAWN_ID
 # PAWN_BOARD[1, 7] = -PAWN_ID
 # PAWN_BOARD[6, 0] = PAWN_ID
 # PAWN_BOARD[6, 1] = PAWN_ID
-PAWN_BOARD[6, 2] = PAWN_ID
+# PAWN_BOARD[6, 2] = PAWN_ID
 PAWN_BOARD[6, 3] = PAWN_ID
 PAWN_BOARD[6, 4] = PAWN_ID
-PAWN_BOARD[6, 5] = PAWN_ID
+# PAWN_BOARD[6, 5] = PAWN_ID
 # PAWN_BOARD[6, 6] = PAWN_ID
 # PAWN_BOARD[6, 7] = PAWN_ID
 # PAWN_BOARD[7, 4] = KING_ID
@@ -69,10 +69,10 @@ epsilon = 0.15
 
 ql_agent = q_learning_agent(env, alpha=alpha, discount=discount, epsilon=epsilon)
 
-average_rewards, test_rewards = ql_agent.train(30, no_episodes=300000, double=False)
+average_rewards, test_rewards = ql_agent.train(30, no_episodes=5000, double=False)
 # plot_rewards(average_rewards, alpha, discount, epsilon, goal=100)
 plot_test_rewards(average_rewards, test_rewards, alpha, discount, epsilon, goal=100)
 
-while(True):
-    ql_agent.play_human()
+# while(True):
+#     ql_agent.play_human()
 

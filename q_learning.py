@@ -33,7 +33,6 @@ class q_learning_agent(object):
 
 
         # loop for each episode
-        #for i in range(no_episodes):
         # while((time.time()-start)<stop_time):
         for i in range(no_episodes):
             # no_episodes += 1    # total number of episodes trained over
@@ -51,9 +50,7 @@ class q_learning_agent(object):
                 # White's move
                 available_actions = self.env.possible_actions
                 # make sure all actions are initialized in the lookup table
-                for option in available_actions:
-                    if((pre_w_state, option) not in self.Q):
-                        self.Q[(pre_w_state, option)] = self.default_value  # initialise all action value pairs as zero
+                self.initialise_values(pre_w_state, available_actions)
 
                 white_action = self.choose_egreedy_action(pre_w_state, available_actions)
                 new_state, w_move_reward, done, info = self.env.white_step(white_action)
@@ -70,13 +67,10 @@ class q_learning_agent(object):
                         post_w_state = self.env.encode_state()
                         reversed_post_w_state = self.env.reverse_state_encoding(state=post_w_state)
                         #make sure all actions are initialised in the lookup table
-                        available_actions = self.env.possible_actions
-                        r_available_actions = []
-                        for option in available_actions:
-                            r_option = self.env.reverse_action(option)
-                            r_available_actions.append(r_option)
-                            if((reversed_post_w_state, r_option) not in self.Q):
-                                self.Q[(reversed_post_w_state, r_option)] = self.default_value  #initialise all action value pairs as zero
+                        available_actions = np.array(self.env.possible_actions)
+                        r_available_actions = self.env.reverse_action(available_actions)
+                        self.initialise_values(reversed_post_w_state, r_available_actions)
+                        
                         best_action = self.best_action(reversed_post_w_state, r_available_actions)
                         # self.env.show_encoded_state(reversed_post_w_state)
                         # print(self.env.action_to_move(best_action), [self.env.action_to_move(action) for action in r_available_actions])
@@ -93,16 +87,14 @@ class q_learning_agent(object):
 
                         possible_moves = self.env.get_possible_moves(state=temp_state, player=self.env.player)
                         encoded_temp_state = self.env.encode_state(temp_state)
-                        possible_actions = []
+                        available_actions = []
                         for move in possible_moves:
-                            possible_actions.append(self.env.move_to_action(move))
+                            available_actions.append(self.env.move_to_action(move))
                         # make sure all actions are initialized in the lookup table
-                        for option in possible_actions:
-                            if((encoded_temp_state, option) not in self.Q):
-                                self.Q[(encoded_temp_state, option)] = self.default_value  #initialise all action value pairs as zero
+                        self.initialise_values(encoded_temp_state, available_actions)
                         
                         # best_action = self.best_action(encoded_temp_state, possible_actions)
-                        best_action = self.choose_egreedy_action(encoded_temp_state, possible_actions)
+                        best_action = self.choose_egreedy_action(encoded_temp_state, available_actions)
 
                         # reverse action back to Black's POV
                         black_action = self.env.reverse_action(best_action)
@@ -123,9 +115,8 @@ class q_learning_agent(object):
                     post_b_state = self.env.encode_state()
                     #make sure all actions are initialised in the lookup table
                     available_actions = self.env.possible_actions
-                    for option in available_actions:
-                        if((post_b_state, option) not in self.Q):
-                            self.Q[(post_b_state, option)] = self.default_value  #initialise all action value pairs as zero
+                    self.initialise_values(post_b_state, available_actions)
+
                     best_action = self.best_action(post_b_state, available_actions)
                     self.update_table(pre_w_state, white_action, w_move_reward+black_move_reward, post_b_state, best_action)
 
@@ -173,9 +164,8 @@ class q_learning_agent(object):
             available_actions = environment.possible_actions
             encoded_state = environment.encode_state()
             #make sure all actions are initialised in the lookup table
-            for option in available_actions:
-                if((encoded_state, option) not in self.Q):
-                    self.Q[(encoded_state, option)] = 0  #initialise all action value pairs as zero
+            self.initialise_values(encoded_state, available_actions)
+
             action = self.best_action(encoded_state, available_actions)
             
             _, w_move_reward, _, _ = environment.white_step(action)
@@ -200,6 +190,11 @@ class q_learning_agent(object):
         else:
             # update Q value
             self.Q[(state, action)] += self.alpha*(reward + self.discount*self.Q[(new_state, best_action)] - self.Q[(state, action)])
+
+    def initialise_values(self, encoded_state, available_actions):
+        for option in available_actions:
+            if((encoded_state, option) not in self.Q):
+                self.Q[(encoded_state, option)] = 0  #initialise all action value pairs as zero
 
     def choose_egreedy_action(self, state, actions):
         if(random.random() > self.epsilon):
