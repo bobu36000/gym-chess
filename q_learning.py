@@ -1,4 +1,4 @@
-import random, time, copy
+import random, time, copy, os
 import numpy as np
 import gym
 from gym_chess import ChessEnvV1, ChessEnvV2
@@ -12,7 +12,7 @@ class q_learning_agent(object):
 
         # create value lookup table
         self.Q = {}
-        self.default_value = 0
+        self.default_value = 0.0
 
         # set environment
         self.env = environment
@@ -194,7 +194,7 @@ class q_learning_agent(object):
     def initialise_values(self, encoded_state, available_actions):
         for option in available_actions:
             if((encoded_state, option) not in self.Q):
-                self.Q[(encoded_state, option)] = 0  #initialise all action value pairs as zero
+                self.Q[(encoded_state, option)] = self.default_value  #initialise all action value pairs as zero
 
     def choose_egreedy_action(self, state, actions):
         if(random.random() > self.epsilon):
@@ -254,3 +254,28 @@ class q_learning_agent(object):
         
         self.env.render()
         print(f'Total reward: {total_reward}')
+
+    def save_q_table(self, folder, filename):
+        # Create the folder if it doesn't exist
+        os.makedirs(folder, exist_ok=True)
+        
+        # Construct the full file path
+        filepath = os.path.join(folder, filename)
+        
+        with open(filepath, 'w') as f:
+            for key, value in self.Q.items():
+                f.write(f"{key}: {value}\n")
+        print(f"Dictionary elements have been written to '{filepath}' successfully.")
+
+    def load_q_table(self, folder, filename):
+        # Construct the full file path
+        filepath = os.path.join(folder, filename)
+        
+        with open(filepath, 'r') as f:
+            # Read lines from the file
+            lines = f.readlines()
+            
+            # Parse each line and extract key-value pairs
+            for line in lines:
+                key, value = line.strip().split(': ')
+                self.Q[key] = float(value)

@@ -69,9 +69,13 @@ epsilon = 0.15
 
 ql_agent = q_learning_agent(env, alpha=alpha, discount=discount, epsilon=epsilon)
 
+# ql_agent.load_q_table('saved_tables', 'test_table.txt')
+
 average_rewards, test_rewards = ql_agent.train(30, no_episodes=5000, double=False)
 # plot_rewards(average_rewards, alpha, discount, epsilon, goal=100)
 plot_test_rewards(average_rewards, test_rewards, alpha, discount, epsilon, goal=100)
+
+ql_agent.save_q_table('saved_tables', 'test_table.txt')
 
 # while(True):
 #     ql_agent.play_human()
