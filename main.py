@@ -1,7 +1,8 @@
 import random, time
 import numpy as np
 from graphs import plot_rewards, plot_test_rewards
-from q_learning import q_learning_agent
+from q_learning import Q_learning_agent
+from sarsa_lambda import Sarsa_lambda_agent
 # from q_learning_just_states import q_learning_agent
 import gym
 from gym_chess import ChessEnvV1, ChessEnvV2
@@ -40,18 +41,18 @@ def play_human(env):
 PAWN_BOARD = np.array([[0] * 8] * 8, dtype=np.int8)
 # PAWN_BOARD[1, 0] = -PAWN_ID
 # PAWN_BOARD[1, 1] = -PAWN_ID
-# PAWN_BOARD[1, 2] = -PAWN_ID
+PAWN_BOARD[1, 2] = -PAWN_ID
 PAWN_BOARD[1, 3] = -PAWN_ID
 PAWN_BOARD[1, 4] = -PAWN_ID
-# PAWN_BOARD[1, 5] = -PAWN_ID
+PAWN_BOARD[1, 5] = -PAWN_ID
 # PAWN_BOARD[1, 6] = -PAWN_ID
 # PAWN_BOARD[1, 7] = -PAWN_ID
 # PAWN_BOARD[6, 0] = PAWN_ID
 # PAWN_BOARD[6, 1] = PAWN_ID
-# PAWN_BOARD[6, 2] = PAWN_ID
+PAWN_BOARD[6, 2] = PAWN_ID
 PAWN_BOARD[6, 3] = PAWN_ID
 PAWN_BOARD[6, 4] = PAWN_ID
-# PAWN_BOARD[6, 5] = PAWN_ID
+PAWN_BOARD[6, 5] = PAWN_ID
 # PAWN_BOARD[6, 6] = PAWN_ID
 # PAWN_BOARD[6, 7] = PAWN_ID
 # PAWN_BOARD[7, 4] = KING_ID
@@ -66,16 +67,21 @@ env = ChessEnvV2(player_color="WHITE", opponent="self", log=False, initial_board
 alpha = 0.1
 discount = 0.99
 epsilon = 0.15
+trace_decay = 0.7
 
-ql_agent = q_learning_agent(env, alpha=alpha, discount=discount, epsilon=epsilon)
+
+agent = Sarsa_lambda_agent(env, alpha=alpha, discount=discount, epsilon=epsilon, trace_decay=trace_decay)
+# agent = Q_learning_agent(env, alpha=alpha, discount=discount, epsilon=epsilon)
 
 # ql_agent.load_q_table('saved_tables', 'test_table.txt')
 
-average_rewards, test_rewards = ql_agent.train(30, no_episodes=5000, double=False)
+average_rewards, test_rewards = agent.train(no_episodes=5000)
+
+# ql_agent.save_q_table('saved_tables', 'Q-300000.txt')
+
 # plot_rewards(average_rewards, alpha, discount, epsilon, goal=100)
 plot_test_rewards(average_rewards, test_rewards, alpha, discount, epsilon, goal=100)
 
-ql_agent.save_q_table('saved_tables', 'test_table.txt')
 
 # while(True):
 #     ql_agent.play_human()

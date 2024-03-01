@@ -3,7 +3,7 @@ import numpy as np
 import gym
 from gym_chess import ChessEnvV1, ChessEnvV2
 
-class q_learning_agent(object):
+class Q_learning_agent(object):
     def __init__(self, environment, alpha=0.2, discount=1.0, epsilon=0.15):
         # set hyperparameters
         self.alpha = alpha          #learning rate
@@ -21,7 +21,7 @@ class q_learning_agent(object):
         # resets the value lookup table
         self.Q = {}
 
-    def train(self, stop_time, no_episodes=0, double=False):
+    def train(self, stop_time=0, no_episodes=0, double=False):
         episode_rewards = []
         test_rewards = []
         episode_lengths = []
