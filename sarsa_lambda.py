@@ -1,4 +1,4 @@
-import random, time, copy, os
+import random, time, copy, os, math
 import numpy as np
 import gym
 from gym_chess import ChessEnvV1, ChessEnvV2
@@ -11,8 +11,11 @@ class Sarsa_lambda_agent(Q_learning_agent):
         # set remaining hyperparameters
         self.trace_decay = trace_decay
 
-        # create trace dictionary
-        self.e = {}
+        # create trace queue that stores the previous states (up to a negidgable contributuion)
+        threshold = 0.01
+        self.trace_length = math.log(threshold, trace_decay) // 1
+        print(f"Trace coefficient: {self.trace_decay}, Trace length: {self.trace_length}")
+        self.trace = [] # array of tuples in the form (state, action)
 
     def train(self, no_episodes=0):
         episode_rewards = []
@@ -26,9 +29,10 @@ class Sarsa_lambda_agent(Q_learning_agent):
 
         # loop for each episode
         for i in range(no_episodes):
-            print(i)
+            # print(i)
             total_reward = 0
             self.env.reset()
+            self.trace = []
 
             episode_length = 0
             pre_b_state = None
@@ -128,7 +132,6 @@ class Sarsa_lambda_agent(Q_learning_agent):
         for option in available_actions:
             if((encoded_state, option) not in self.Q):
                 self.Q[(encoded_state, option)] = self.default_value  #initialise all action value pairs as zero
-                self.e[(encoded_state, option)] = 0.0
 
     def update_table(self, state, action, reward, new_state=None, new_action=None):
         if new_state == None:
@@ -137,17 +140,18 @@ class Sarsa_lambda_agent(Q_learning_agent):
         else:
             delta = reward + self.discount*self.Q[(new_state, new_action)] - self.Q[(state, action)]
 
-        self.e[(state, action)] += 1
+        # add current state to trace
+        self.trace.append((state, action))
 
-        # Convert dictionary values to a NumPy array
-        Q_values_array = np.array(list(self.Q.values()))
-        e_values_array = np.array(list(self.e.values()))
-        
-        # Perform element-wise addition/multiplication
-        Q_values_array += self.alpha*delta*e_values_array
-        e_values_array *= self.discount*self.trace_decay
-        
-        # Convert the result back to a dictionary
-        self.Q = {key: value for key, value in zip(self.Q.keys(), Q_values_array)}
-        self.e = {key: value for key, value in zip(self.e.keys(), e_values_array)}
-    
+        # keep the trace to a max length
+        if(len(self.trace) > self.trace_length):
+            self.trace.pop(0)
+
+        # print(f"trace: {self.trace}")
+
+        for i in range(len(self.trace)):
+            trace_parameter = math.pow(self.discount*self.trace_decay, i)
+            # print(f"Trace Parameter: {trace_parameter}, i: {i}")
+            self.Q[self.trace[-(i+1)]] += trace_parameter * self.alpha * delta
+
+        # print("next")

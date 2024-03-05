@@ -65,7 +65,7 @@ env = ChessEnvV2(player_color="WHITE", opponent="self", log=False, initial_board
 
 
 alpha = 0.1
-discount = 0.99
+discount = 0.9
 epsilon = 0.15
 trace_decay = 0.7
 
@@ -75,13 +75,14 @@ agent = Sarsa_lambda_agent(env, alpha=alpha, discount=discount, epsilon=epsilon,
 
 # ql_agent.load_q_table('saved_tables', 'test_table.txt')
 
-average_rewards, test_rewards = agent.train(no_episodes=5000)
+average_rewards, test_rewards = agent.train(no_episodes=300000)
 
-# ql_agent.save_q_table('saved_tables', 'Q-300000.txt')
+agent.save_q_table('saved_tables', 'Sarsa-300000 temp.txt')
 
 # plot_rewards(average_rewards, alpha, discount, epsilon, goal=100)
 plot_test_rewards(average_rewards, test_rewards, alpha, discount, epsilon, goal=100)
 
+print(agent.get_0_proportion())
 
 # while(True):
 #     ql_agent.play_human()

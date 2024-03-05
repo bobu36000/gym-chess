@@ -279,3 +279,12 @@ class Q_learning_agent(object):
             for line in lines:
                 key, value = line.strip().split(': ')
                 self.Q[key] = float(value)
+
+    def get_0_proportion(self):
+        count = 0
+        for value in self.Q.values():
+            if value == 0.0:
+                count += 1
+        
+        print(f"Total: {len(self.Q)}, count: {count}")
+        return count/len(self.Q)
