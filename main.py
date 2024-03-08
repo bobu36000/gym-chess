@@ -63,26 +63,27 @@ print("Building environment")
 #env = ChessEnvV1(player_color="WHITE", opponent="random", log=True, initial_state = PAWN_BOARD, end = "promotion")
 env = ChessEnvV2(player_color="WHITE", opponent="self", log=False, initial_board=PAWN_BOARD, end = "promotion")
 
+epoch = 100
 
-alpha = 0.1
+alpha = 0.2
 discount = 0.9
 epsilon = 0.15
-trace_decay = 0.7
+trace_decay = 0.5
 
 
-agent = Sarsa_lambda_agent(env, alpha=alpha, discount=discount, epsilon=epsilon, trace_decay=trace_decay)
-# agent = Q_learning_agent(env, alpha=alpha, discount=discount, epsilon=epsilon)
+# agent = Sarsa_lambda_agent(env, epoch=epoch, alpha=alpha, discount=discount, epsilon=epsilon, trace_decay=trace_decay)
+agent = Q_learning_agent(env, epoch=epoch, alpha=alpha, discount=discount, epsilon=epsilon)
 
 # ql_agent.load_q_table('saved_tables', 'test_table.txt')
 
-average_rewards, test_rewards = agent.train(no_episodes=300000)
+average_rewards, test_rewards = agent.train(no_epochs=10000)
 
-agent.save_q_table('saved_tables', 'Sarsa-300000 temp.txt')
+# agent.save_q_table('saved_tables', 'Sarsa-300000 temp.txt')
 
 # plot_rewards(average_rewards, alpha, discount, epsilon, goal=100)
 plot_test_rewards(average_rewards, test_rewards, alpha, discount, epsilon, goal=100)
 
-print(agent.get_0_proportion())
+# print(agent.get_0_proportion())
 
 # while(True):
 #     ql_agent.play_human()

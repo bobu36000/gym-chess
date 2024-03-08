@@ -5,8 +5,8 @@ from gym_chess import ChessEnvV1, ChessEnvV2
 from q_learning import Q_learning_agent
 
 class Sarsa_lambda_agent(Q_learning_agent):
-    def __init__(self, environment, alpha=0.2, discount=1.0, epsilon=0.15, trace_decay=0.7):
-        super().__init__(environment, alpha=alpha, discount=discount, epsilon=epsilon)
+    def __init__(self, environment, epoch=100, alpha=0.2, discount=1.0, epsilon=0.15, trace_decay=0.7):
+        super().__init__(environment, epoch=epoch, alpha=alpha, discount=discount, epsilon=epsilon)
 
         # set remaining hyperparameters
         self.trace_decay = trace_decay
@@ -17,8 +17,8 @@ class Sarsa_lambda_agent(Q_learning_agent):
         print(f"Trace coefficient: {self.trace_decay}, Trace length: {self.trace_length}")
         self.trace = [] # array of tuples in the form (state, action)
 
-    def train(self, no_episodes=0):
-        episode_rewards = []
+    def train(self, no_epochs=0):
+        epoch_rewards = []
         test_rewards = []
         episode_lengths = []
 
@@ -27,8 +27,11 @@ class Sarsa_lambda_agent(Q_learning_agent):
         print("Training...")
         start = time.time()
 
+        no_time_steps = 0
+        epoch_reward = []
+
         # loop for each episode
-        for i in range(no_episodes):
+        while(no_time_steps/self.epoch < no_epochs):
             # print(i)
             total_reward = 0
             self.env.reset()
@@ -40,6 +43,7 @@ class Sarsa_lambda_agent(Q_learning_agent):
             # loop for each action in an episode
             done = False
             while(not done):
+                no_time_steps += 1
                 pre_w_state = self.env.encode_state()
 
                 # White's move
@@ -97,30 +101,32 @@ class Sarsa_lambda_agent(Q_learning_agent):
                 total_reward += w_move_reward+black_move_reward
                 episode_length += 1
 
-            episode_rewards.append(round(total_reward, 1))
+                # check if it is the end of an epoch
+                if(no_time_steps % self.epoch == 0):
+                    epoch_rewards.append(np.mean(epoch_reward))
+                    test_rewards.append(self.one_episode())
+
+                    # reset the epoch reward array
+                    epoch_reward = []
+
+            epoch_reward.append(round(total_reward, 1))
             episode_lengths.append(episode_length)
-            test_rewards.append(self.one_episode())
 
         end = time.time()
 
         # Create an array to store the rolling averages
-        average_rewards = np.zeros_like(episode_rewards, dtype=float)
+        average_rewards = np.zeros_like(epoch_rewards, dtype=float)
         average_test_rewards = np.zeros_like(test_rewards, dtype=float)
+        
+        # calculate rolling averages
+        window_size = no_epochs//25
+        average_test_rewards = [np.mean(test_rewards[i-window_size:i]) if i>window_size else 0 for i in range(len(test_rewards))]
+        average_rewards = [np.mean(epoch_rewards[i-window_size:i]) if i>window_size else 0 for i in range(len(epoch_rewards))]
 
-        # Calculate the rolling averages
-        over = no_episodes//50
-        if(over-1>10):
-            for i in range(10, over-1):
-                average_rewards[i] = np.mean(episode_rewards[0:i])
-                average_test_rewards[i] = np.mean(test_rewards[0:i])
-
-        for i in range(over-1, len(episode_rewards)):
-            average_rewards[i] = np.mean(episode_rewards[i+1-over:i+1])
-            average_test_rewards[i] = np.mean(test_rewards[i+1-over:i+1])
 
         print("Training complete")
         print(f'Time taken: {round(end-start, 1)}')
-        print(f"Number of episodes: {no_episodes}")
+        print(f"Number of epochs: {no_epochs}")
         print(f"Average episode length: {np.mean(episode_lengths)}")
         print(f"{len(self.Q)} states have been assigned values")
         print(f"Hyperparameters are: alpha={self.alpha}, discount={self.discount}, epsilon={self.epsilon}, trace_decay: {self.trace_decay}")
@@ -149,9 +155,13 @@ class Sarsa_lambda_agent(Q_learning_agent):
 
         # print(f"trace: {self.trace}")
 
+        # print(f"Delta: {delta}")
         for i in range(len(self.trace)):
             trace_parameter = math.pow(self.discount*self.trace_decay, i)
             # print(f"Trace Parameter: {trace_parameter}, i: {i}")
+            # print(f"Value added: {trace_parameter * self.alpha * delta}")
+            # print(f"To state: {self.trace[-(i+1)]}")
+
             self.Q[self.trace[-(i+1)]] += trace_parameter * self.alpha * delta
 
-        # print("next")
+        # print("next\n")

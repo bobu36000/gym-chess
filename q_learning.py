@@ -4,11 +4,14 @@ import gym
 from gym_chess import ChessEnvV1, ChessEnvV2
 
 class Q_learning_agent(object):
-    def __init__(self, environment, alpha=0.2, discount=1.0, epsilon=0.15):
+    def __init__(self, environment, epoch = 100, alpha=0.2, discount=1.0, epsilon=0.15):
         # set hyperparameters
         self.alpha = alpha          #learning rate
         self.discount = discount    #discount factor
         self.epsilon = epsilon      #epsilon greedy term
+
+        # set how many time steps are in an epoch
+        self.epoch = epoch
 
         # create value lookup table
         self.Q = {}
@@ -21,8 +24,8 @@ class Q_learning_agent(object):
         # resets the value lookup table
         self.Q = {}
 
-    def train(self, stop_time=0, no_episodes=0, double=False):
-        episode_rewards = []
+    def train(self, no_epochs=0, double=False):
+        epoch_rewards = []
         test_rewards = []
         episode_lengths = []
 
@@ -31,11 +34,11 @@ class Q_learning_agent(object):
         print("Training...")
         start = time.time()
 
+        no_time_steps = 0
+        epoch_reward = []
 
         # loop for each episode
-        # while((time.time()-start)<stop_time):
-        for i in range(no_episodes):
-            # no_episodes += 1    # total number of episodes trained over
+        while(no_time_steps/self.epoch < no_epochs):
             total_reward = 0    # total reward collected over this episode
             self.env.reset()
 
@@ -45,6 +48,7 @@ class Q_learning_agent(object):
             # loop for each action in an episode
             done = False
             while(not done):
+                no_time_steps += 1
                 pre_w_state = self.env.encode_state()
 
                 # White's move
@@ -122,32 +126,32 @@ class Q_learning_agent(object):
 
                 total_reward += w_move_reward+black_move_reward
                 episode_length += 1
-            
-            episode_rewards.append(round(total_reward, 1))
-            episode_lengths.append(episode_length)
 
-            test_rewards.append(self.one_episode())
+                # check if it is the end of an epoch
+                if(no_time_steps % self.epoch == 0):
+                    epoch_rewards.append(np.mean(epoch_reward))
+                    test_rewards.append(self.one_episode())
+
+                    # reset the epoch reward array
+                    epoch_reward = []
+
+            epoch_reward.append(round(total_reward, 1))
+            episode_lengths.append(episode_length)
 
         end = time.time()
 
         # Create an array to store the rolling averages
-        average_rewards = np.zeros_like(episode_rewards, dtype=float)
+        average_rewards = np.zeros_like(epoch_rewards, dtype=float)
         average_test_rewards = np.zeros_like(test_rewards, dtype=float)
-
-        # Calculate the rolling averages
-        over = no_episodes//50
-        if(over-1>10):
-            for i in range(10, over-1):
-                average_rewards[i] = np.mean(episode_rewards[0:i])
-                average_test_rewards[i] = np.mean(test_rewards[0:i])
-
-        for i in range(over-1, len(episode_rewards)):
-            average_rewards[i] = np.mean(episode_rewards[i+1-over:i+1])
-            average_test_rewards[i] = np.mean(test_rewards[i+1-over:i+1])
+        
+        # calculate rolling averages
+        window_size = no_epochs//25
+        average_test_rewards = [np.mean(test_rewards[i-window_size:i]) if i>window_size else np.mean(epoch_rewards[0:i+1]) for i in range(len(test_rewards))]
+        average_rewards = [np.mean(epoch_rewards[i-window_size:i]) if i>window_size else np.mean(epoch_rewards[0:i+1]) for i in range(len(epoch_rewards))]
 
         print("Training complete")
         print(f'Time taken: {round(end-start, 1)}')
-        print(f"Number of episodes: {no_episodes}")
+        print(f"Number of epochs: {no_epochs}")
         print(f"Average episode length: {np.mean(episode_lengths)}")
         print(f"{len(self.Q)} states have been assigned values")
         print(f"Hyperparameters are: alpha={self.alpha}, discount={self.discount}, epsilon={self.epsilon}")
