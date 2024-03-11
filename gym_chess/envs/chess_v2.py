@@ -250,6 +250,7 @@ class ChessEnvV2(gym.Env):
             return (self.state, 0.0, True, self.info)
         # Number of moves has exceeded the max
         if self.move_count > self.moves_max:
+            self.done = True
             return (self.state, 0.0, True, self.info)
 
         # valid action reward
@@ -687,7 +688,7 @@ class ChessEnvV2(gym.Env):
         if(board == None):
             board = self.board
 
-        mapping = "0ABCDEFfedcba"
+        mapping = "0KQRBNPpnbrqk"
         encoding = "".join([mapping[val] for row in board for val in row])
         return encoding
     
