@@ -1,9 +1,11 @@
 import random, time, copy, os
 import numpy as np
+from collections import defaultdict
 import gym
 from gym_chess import ChessEnvV1, ChessEnvV2
+from agent import Agent
 
-class Q_learning_agent(object):
+class Q_learning_agent(Agent):
     def __init__(self, environment, epoch = 100, alpha=0.2, discount=1.0, epsilon=0.15):
         # set hyperparameters
         self.alpha = alpha          #learning rate
@@ -14,7 +16,7 @@ class Q_learning_agent(object):
         self.epoch = epoch
 
         # create value lookup table
-        self.Q = {}
+        self.Q = defaultdict(lambda: 0.0)
         self.default_value = 0.0
 
         # set environment
@@ -54,7 +56,6 @@ class Q_learning_agent(object):
                 # White's move
                 available_actions = self.env.possible_actions
                 # make sure all actions are initialized in the lookup table
-                self.initialise_values(pre_w_state, available_actions)
 
                 white_action = self.choose_egreedy_action(pre_w_state, available_actions)
                 new_state, w_move_reward, done, info = self.env.white_step(white_action)
@@ -73,7 +74,6 @@ class Q_learning_agent(object):
                         #make sure all actions are initialised in the lookup table
                         available_actions = np.array(self.env.possible_actions)
                         r_available_actions = self.env.reverse_action(available_actions)
-                        self.initialise_values(reversed_post_w_state, r_available_actions)
                         
                         best_action = self.best_action(reversed_post_w_state, r_available_actions)
                         # self.env.show_encoded_state(reversed_post_w_state)
@@ -95,7 +95,6 @@ class Q_learning_agent(object):
                         for move in possible_moves:
                             available_actions.append(self.env.move_to_action(move))
                         # make sure all actions are initialized in the lookup table
-                        self.initialise_values(encoded_temp_state, available_actions)
                         
                         # best_action = self.best_action(encoded_temp_state, possible_actions)
                         best_action = self.choose_egreedy_action(encoded_temp_state, available_actions)
@@ -119,7 +118,6 @@ class Q_learning_agent(object):
                     post_b_state = self.env.encode_state()
                     #make sure all actions are initialised in the lookup table
                     available_actions = self.env.possible_actions
-                    self.initialise_values(post_b_state, available_actions)
 
                     best_action = self.best_action(post_b_state, available_actions)
                     self.update_table(pre_w_state, white_action, w_move_reward+black_move_reward, post_b_state, best_action)
@@ -168,7 +166,6 @@ class Q_learning_agent(object):
             available_actions = environment.possible_actions
             encoded_state = environment.encode_state()
             #make sure all actions are initialised in the lookup table
-            self.initialise_values(encoded_state, available_actions)
 
             action = self.best_action(encoded_state, available_actions)
             
@@ -194,11 +191,6 @@ class Q_learning_agent(object):
         else:
             # update Q value
             self.Q[(state, action)] += self.alpha*(reward + self.discount*self.Q[(new_state, best_action)] - self.Q[(state, action)])
-
-    def initialise_values(self, encoded_state, available_actions):
-        for option in available_actions:
-            if((encoded_state, option) not in self.Q):
-                self.Q[(encoded_state, option)] = self.default_value  #initialise all action value pairs as zero
 
     def choose_egreedy_action(self, state, actions):
         if(random.random() > self.epsilon):
@@ -259,7 +251,7 @@ class Q_learning_agent(object):
         self.env.render()
         print(f'Total reward: {total_reward}')
 
-    def save_q_table(self, folder, filename):
+    def save_paramters(self, folder, filename):
         # Create the folder if it doesn't exist
         os.makedirs(folder, exist_ok=True)
         
@@ -271,7 +263,7 @@ class Q_learning_agent(object):
                 f.write(f"{key}: {value}\n")
         print(f"Dictionary elements have been written to '{filepath}' successfully.")
 
-    def load_q_table(self, folder, filename):
+    def load_paramters(self, folder, filename):
         # Construct the full file path
         filepath = os.path.join(folder, filename)
         

@@ -1,5 +1,6 @@
 import random, time, copy, os, math
 import numpy as np
+from collections import defaultdict
 import gym
 from gym_chess import ChessEnvV1, ChessEnvV2
 from q_learning import Q_learning_agent
@@ -32,7 +33,6 @@ class Sarsa_lambda_agent(Q_learning_agent):
 
         # loop for each episode
         while(no_time_steps/self.epoch < no_epochs):
-            # print(i)
             total_reward = 0
             self.env.reset()
             self.trace = []
@@ -49,7 +49,6 @@ class Sarsa_lambda_agent(Q_learning_agent):
                 # White's move
                 available_actions = self.env.possible_actions
                 # initialise actions in the lookup table
-                self.initialise_values(pre_w_state, available_actions)
 
                 white_action = self.choose_egreedy_action(pre_w_state, available_actions)
                 new_state, w_move_reward, done, info = self.env.white_step(white_action)
@@ -68,7 +67,6 @@ class Sarsa_lambda_agent(Q_learning_agent):
                         for move in possible_moves:
                             available_actions.append(self.env.move_to_action(move))
                         # make sure all actions are initialized in the lookup table
-                        self.initialise_values(encoded_temp_state, available_actions)
                         
                         # best_action = self.best_action(encoded_temp_state, possible_actions)
                         best_action = self.choose_egreedy_action(encoded_temp_state, available_actions)
@@ -92,7 +90,6 @@ class Sarsa_lambda_agent(Q_learning_agent):
                     post_b_state = self.env.encode_state()
                     #make sure all actions are initialised in the lookup table
                     available_actions = self.env.possible_actions
-                    self.initialise_values(post_b_state, available_actions)
 
                     # new_action = self.best_action(post_b_state, available_actions)
                     new_action = self.choose_egreedy_action(post_b_state, available_actions)
@@ -120,8 +117,8 @@ class Sarsa_lambda_agent(Q_learning_agent):
         
         # calculate rolling averages
         window_size = no_epochs//25
-        average_test_rewards = [np.mean(test_rewards[i-window_size:i]) if i>window_size else 0 for i in range(len(test_rewards))]
-        average_rewards = [np.mean(epoch_rewards[i-window_size:i]) if i>window_size else 0 for i in range(len(epoch_rewards))]
+        average_test_rewards = [np.mean(test_rewards[i-window_size:i]) if i>window_size else np.mean(epoch_rewards[0:i+1]) for i in range(len(test_rewards))]
+        average_rewards = [np.mean(epoch_rewards[i-window_size:i]) if i>window_size else np.mean(epoch_rewards[0:i+1]) for i in range(len(epoch_rewards))]
 
 
         print("Training complete")
@@ -132,12 +129,6 @@ class Sarsa_lambda_agent(Q_learning_agent):
         print(f"Hyperparameters are: alpha={self.alpha}, discount={self.discount}, epsilon={self.epsilon}, trace_decay: {self.trace_decay}")
         
         return(average_rewards, average_test_rewards)
-
-
-    def initialise_values(self, encoded_state, available_actions):
-        for option in available_actions:
-            if((encoded_state, option) not in self.Q):
-                self.Q[(encoded_state, option)] = self.default_value  #initialise all action value pairs as zero
 
     def update_table(self, state, action, reward, new_state=None, new_action=None):
         if new_state == None:
