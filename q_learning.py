@@ -7,6 +7,8 @@ from agent import Agent
 
 class Q_learning_agent(Agent):
     def __init__(self, environment, epoch = 100, alpha=0.2, discount=1.0, epsilon=0.15):
+        super().__init__(environment)
+
         # set hyperparameters
         self.alpha = alpha          #learning rate
         self.discount = discount    #discount factor
@@ -18,9 +20,6 @@ class Q_learning_agent(Agent):
         # create value lookup table
         self.Q = defaultdict(lambda: 0.0)
         self.default_value = 0.0
-
-        # set environment
-        self.env = environment
 
     def reset_memory(self):
         # resets the value lookup table

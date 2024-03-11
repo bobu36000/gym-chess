@@ -1,8 +1,8 @@
 from gym_chess import ChessEnvV1, ChessEnvV2
 
 class Agent(object):
-    def __init__(self):
-        pass
+    def __init__(self, environment):
+        self.env = environment
 
     def train(self, no_epochs):
         pass
