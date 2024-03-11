@@ -4,6 +4,7 @@ from collections import defaultdict
 from graphs import plot_rewards, plot_test_rewards
 from q_learning import Q_learning_agent
 from sarsa_lambda import Sarsa_lambda_agent
+from DQN import DQN
 # from q_learning_just_states import q_learning_agent
 import gym
 from gym_chess import ChessEnvV1, ChessEnvV2
@@ -82,18 +83,19 @@ epsilon = 0.15
 trace_decay = 0.7
 
 
-agent = Sarsa_lambda_agent(env, epoch=epoch, alpha=alpha, discount=discount, epsilon=epsilon, trace_decay=trace_decay)
 # agent = Q_learning_agent(env, epoch=epoch, alpha=alpha, discount=discount, epsilon=epsilon)
+# agent = Sarsa_lambda_agent(env, epoch=epoch, alpha=alpha, discount=discount, epsilon=epsilon, trace_decay=trace_decay)
+agent = DQN(env, alpha, discount, epsilon, channels=(16,32,64), layer_dim=128, kernel_size=3, stride=1)
 
 # ql_agent.load_q_table('saved_tables', 'test_table.txt')
 
-average_rewards, test_rewards = agent.train(no_epochs=10000)
+# average_rewards, test_rewards = agent.train(no_epochs=10000)
 
 # agent.save_q_table('saved_tables', '4p-Sarsa-10000.txt')
 # agent.save_q_table('saved_tables', 'test.txt')
 
 # plot_rewards(average_rewards, alpha, discount, epsilon, goal=100)
-plot_test_rewards(average_rewards, test_rewards, alpha, discount, epsilon, goal=100)
+# plot_test_rewards(average_rewards, test_rewards, alpha, discount, epsilon, goal=100)
 
 # print(agent.get_0_proportion())
 
