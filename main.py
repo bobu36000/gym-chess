@@ -5,7 +5,7 @@ from graphs import plot_rewards, plot_test_rewards
 from q_learning import Q_learning_agent
 from sarsa_lambda import Sarsa_lambda_agent
 from DQN import DQN
-# from q_learning_just_states import q_learning_agent
+from ReplayBuffer import ReplayBuffer
 import gym
 from gym_chess import ChessEnvV1, ChessEnvV2
 from gym_chess.envs.chess_v1 import (
@@ -85,7 +85,7 @@ trace_decay = 0.7
 
 # agent = Q_learning_agent(env, epoch=epoch, alpha=alpha, discount=discount, epsilon=epsilon)
 # agent = Sarsa_lambda_agent(env, epoch=epoch, alpha=alpha, discount=discount, epsilon=epsilon, trace_decay=trace_decay)
-agent = DQN(env, alpha, discount, epsilon, channels=(16,32,64), layer_dim=128, kernel_size=3, stride=1)
+agent = DQN(env, alpha, discount, epsilon, target_update=100, channels=(24,48,96), layer_dim=128, kernel_size=3, stride=1, memory_size=100000, batch_size=100)
 
 # ql_agent.load_q_table('saved_tables', 'test_table.txt')
 
