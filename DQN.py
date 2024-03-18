@@ -36,7 +36,35 @@ class DQN(Agent):
         self.memory = ReplayBuffer(memory_size, batch_size)
 
     def learn(self):
-        pass
+        self.q_network.optimizer.zero_grad()
+
+        if self.step % self.target_update == 0:
+            # update the target network's parameters
+            self.target_network.load_state_dict(self.q_network.state_dict())
+
+        # sample a batch from memory and extract values
+        samples = self.memory.sample_batch()
+        state_sample = T.from_numpy(samples["states"]).to(self.device)
+        next_state_sample = T.from_numpy(samples["next_states"]).to(self.device)
+        action_sample = samples["actions"]
+        next_action_sample = samples["next_actions"]
+        reward_sample = T.from_numpy(samples["rewards"]).to(self.device)
+        terminal_sample = T.from_numpy(samples["terminals"]).to(self.device)
+        index_sample = samples["indexes"]
+
+        post_move_sample = self.post_move_state(state_sample, "WHITE", action_sample)   #assumes vectorisation is possible with this
+        post_next_move_sample = self.post_move_state(next_state_sample, "WHITE", next_action_sample)
+
+        # calculate q values
+        q_value = self.q_network(self.slice_board(post_move_sample['board']))[index_sample]
+        q_next = self.target_network(self.slice_board(post_next_move_sample['board']))[index_sample]
+        q_next[terminal_sample] = 0.0
+        q_target = reward_sample + self.discount * q_next
+
+        loss = self.q_network.loss(q_target, q_value).to(self.device)
+        loss.backward()
+
+        self.q_network.optimizer.step()
 
     def train(self, no_epochs):
         pass
@@ -47,14 +75,12 @@ class DQN(Agent):
         slices = self.slice_board(board_states['board'])
         
         # calculate values of the states from the q network
-        net_out = self.q_network.forward(T.tensor(slices))
+        net_out = self.q_network(T.tensor(slices))
 
         # find the max value
         best_index = T.argmax(net_out)
 
         return actions[best_index]
-
-
 
     def choose_egreedy_action(self, state, actions):
         if(random.random() > self.epsilon):
@@ -76,6 +102,7 @@ class DQN(Agent):
             
         return board_slices
     
+    # TODO test this method works with vectorisation of arguments
     def post_move_state(self, state, player, action):
         move = self.env.action_to_move(action)
         next_state, reward = self.env.next_state(state, player, move)
