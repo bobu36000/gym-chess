@@ -23,8 +23,8 @@ class DQN(Agent):
 
         self.step = 0
 
-        #self.device = T.device("cuda:0" if T.cuda.is_available() else "cpu")
-        self.device = T.device("cpu")
+        self.device = T.device("cuda:0" if T.cuda.is_available() else "cpu")
+        # self.device = T.device("cpu")
 
         # define CNN
         self.q_network = Network(alpha, channels, layer_dim, kernel_size, stride, reduction=None)
@@ -42,10 +42,29 @@ class DQN(Agent):
         pass
 
     def best_action(self, state, actions):
-        pass
+        # note this is assuming vectorisation is happening, it might not work
+        board_states = self.post_move_state(state, "WHITE", actions)
+        slices = self.slice_board(board_states['board'])
+        
+        # calculate values of the states from the q network
+        net_out = self.q_network.forward(T.tensor(slices))
+
+        # find the max value
+        best_index = T.argmax(net_out)
+
+        return actions[best_index]
+
+
 
     def choose_egreedy_action(self, state, actions):
-        pass
+        if(random.random() > self.epsilon):
+            # select action with the largest value
+            chosen_action = self.best_action(state, actions)
+        else:
+            # select random action
+            chosen_action = random.choice(actions)
+        
+        return chosen_action
 
     def slice_board(self, board):
         board = np.array(board)
@@ -56,4 +75,11 @@ class DQN(Agent):
             board_slices[2*i -1][board == -i] = 1
             
         return board_slices
+    
+    def post_move_state(self, state, player, action):
+        move = self.env.action_to_move(action)
+        next_state, reward = self.env.next_state(state, player, move)
+        if(reward!=0):
+            raise ValueError("Reward not accounted for")
+        return next_state
         
