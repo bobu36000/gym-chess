@@ -6,8 +6,8 @@ class ReplayBuffer(object):
         self.batch_size = batch_size
         self.memory_index = 0
 
-        self.state_memory = np.empty(self.memory_size, dtype='<U64')   # states are stored in the encoded string form (to save memory?)
-        self.next_state_memory = np.empty(self.memory_size, dtype='<U64')
+        self.state_memory = np.empty(self.memory_size, dtype=dict)   # states are stored in the normal dictionary form
+        self.next_state_memory = np.empty(self.memory_size, dtype=dict)
         self.action_memory = np.zeros(self.memory_size, dtype=np.int32)
         self.next_action_memory = np.zeros(self.memory_size, dtype=np.int32)
         self.reward_memory = np.zeros(self.memory_size, dtype=np.float32)
@@ -35,7 +35,7 @@ class ReplayBuffer(object):
         terminal_batch = self.terminal_memory[batch]
         index_batch = np.arange(self.batch_size, dtype=np.int32)
 
-        return dict(states=state_batch, next_states=next_state_batch, actions=action_batch, next_action=next_action_batch rewards=reward_batch, terminals=terminal_batch, indexes=index_batch)
+        return dict(states=state_batch, next_states=next_state_batch, actions=action_batch, next_action=next_action_batch, rewards=reward_batch, terminals=terminal_batch, indexes=index_batch)
 
     def full_batch(self):
-        return self.memory_index < self.batch_size
+        return self.memory_index >= self.batch_size

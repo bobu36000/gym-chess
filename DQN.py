@@ -12,7 +12,7 @@ import torch.optim as optim
 
 
 class DQN(Agent):
-    def __init__(self, environment, alpha, discount, epsilon, target_update, channels, layer_dim, kernel_size, stride, memory_size, batch_size):
+    def __init__(self, environment, epoch, alpha, discount, epsilon, target_update, channels, layer_dim, kernel_size, stride, batch_size,  memory_size):
         super().__init__(environment)
 
         # set hyperparameters
@@ -22,13 +22,19 @@ class DQN(Agent):
         self.target_update = target_update
 
         self.step = 0
+        self.epoch = epoch
 
         self.device = T.device("cuda:0" if T.cuda.is_available() else "cpu")
         # self.device = T.device("cpu")
 
         # define CNN
+        self.channels = channels
+        self.layer_dim = layer_dim
+        self.kernel_size = kernel_size
+        self.stride = stride
         self.q_network = Network(alpha, channels, layer_dim, kernel_size, stride, reduction=None)
         self.target_network = Network(alpha, channels, layer_dim, kernel_size, stride, reduction=None)
+        self.target_network.load_state_dict(self.q_network.state_dict())
 
         #define Replay Buffer
         self.memory_size = memory_size
@@ -67,12 +73,107 @@ class DQN(Agent):
         self.q_network.optimizer.step()
 
     def train(self, no_epochs):
-        pass
+        epoch_rewards = []
+        test_rewards = []
+        episode_lengths = []
+
+        print("Starting Position:")
+        self.env.render()
+        print("Training")
+        start = time.time()
+
+        epoch_reward = []
+        # iterate through the number of epochs
+        while(self.step/self.epoch < no_epochs):
+            episode_reward = 0
+            episode_length = 0
+            self.env.reset()
+            
+            # loop through the steps in an episode
+            done = False
+            while(not done):
+                pre_w_state = self.env.state
+
+                #White's move
+                available_actions = self.env.possible_actions
+
+                white_action = self.choose_egreedy_action(self.env.state, available_actions)
+                new_state, w_move_reward, done, info = self.env.white_step(white_action)
+
+                if(not done):   # black doesn't play if white's move ended the game
+                    if(self.env.opponent == 'self'):
+                        temp_state = copy.deepcopy(self.env.state)
+                        temp_state['board'] = self.env.reverse_board(self.env.state['board'])
+
+                        possible_moves = self.env.get_possible_moves(state=temp_state, player=self.env.player)
+                        available_actions = []
+                        for move in possible_moves:
+                            available_actions.append(self.env.move_to_action(move))
+                        
+                        best_action = self.choose_egreedy_action(temp_state, available_actions)
+
+                        # reverse action back to Black's POV
+                        black_action = self.env.reverse_action(best_action)
+
+                    elif(self.env.opponent == 'random'):
+                        black_actions = self.env.get_possible_actions()
+                        black_action = random.choice(black_actions)
+                    else:
+                        raise ValueError("Invalid opponent type in environment")
+                    
+                    new_state, b_move_reward, done, info = self.env.black_step(black_action)
+
+                # store transition
+                reward = w_move_reward + b_move_reward
+                available_actions = self.env.possible_actions
+                next_action = self.best_action(new_state, available_actions)
+                # May cause and error is white's move ends the game and then black doesn't play
+                self.memory.store(pre_w_state, new_state, white_action, next_action, reward, done)
+                
+                # if there are enough transitions in the memory for a full batch, then learn
+                if self.memory.full_batch():
+                    self.learn()
+
+                episode_reward += reward
+                episode_length += 1
+                self.step += 1
+
+                # check if it is the end of an epoch
+                if(self.step % self.epoch == 0):
+                    epoch_rewards.append(np.mean(epoch_reward))
+                    test_rewards.append(self.one_episode())
+
+                    # reset the epoch reward array
+                    epoch_reward = []
+
+            epoch_reward.append(round(episode_reward, 1))
+            episode_lengths.append(episode_length)
+
+        end = time.time()
+
+        # Create an array to store the rolling averages
+        average_rewards = np.zeros_like(epoch_rewards, dtype=float)
+        average_test_rewards = np.zeros_like(test_rewards, dtype=float)
+        
+        # calculate rolling averages
+        window_size = no_epochs//25
+        average_test_rewards = [np.mean(test_rewards[i-window_size:i]) if i>window_size else np.mean(epoch_rewards[0:i+1]) for i in range(len(test_rewards))]
+        average_rewards = [np.mean(epoch_rewards[i-window_size:i]) if i>window_size else np.mean(epoch_rewards[0:i+1]) for i in range(len(epoch_rewards))]
+
+
+        print("Training complete")
+        print(f'Time taken: {round(end-start, 1)}')
+        print(f"Number of epochs: {no_epochs}")
+        print(f"Average episode length: {np.mean(episode_lengths)}")
+        print(f"Hyperparameters: alpha={self.alpha}, discount={self.discount}, epsilon={self.epsilon}, target_update={self.target_update}")
+        print(f"Network Parameters: channels={self.channels}, layer_dim={self.layer_dim}, kernel_size={self.kernel_size}, stride={self.stride}, batch_size={self.batch_size}")
+        
+        return(average_rewards, average_test_rewards)
 
     def best_action(self, state, actions):
         # note this is assuming vectorisation is happening, it might not work
-        board_states = self.post_move_state(state, "WHITE", actions)
-        slices = self.slice_board(board_states['board'])
+        board_states = np.vectorize(self.post_move_state)(state, "WHITE", actions)
+        slices = np.vectorize(self.slice_board, signature='(8, 8)->(12, 8, 8)')(board_states['board'])
         
         # calculate values of the states from the q network
         net_out = self.q_network(T.tensor(slices))
