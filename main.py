@@ -93,12 +93,14 @@ trace_decay = 0.7
 # agent = Sarsa_lambda_agent(env, epoch=epoch, alpha=alpha, discount=discount, epsilon=epsilon, trace_decay=trace_decay)
 agent = DQN(env, epoch, alpha, discount, epsilon, target_update=100, channels=(12,12,12), layer_dim=128, kernel_size=3, stride=1, batch_size=10, memory_size=100000)
 
-# ql_agent.load_q_table('saved_tables', 'test_table.txt')
+# ql_agent.load_q_table('saved_models', 'test_table.txt')
+# agent.load_parameters('saved_models', 'DQN-test.pth')
 
 average_rewards, test_rewards = agent.train(no_epochs=1000)
 
-# agent.save_q_table('saved_tables', '4p-Sarsa-10000.txt')
-# agent.save_q_table('saved_tables', 'test.txt')
+# agent.save_q_table('saved_models', '4p-Sarsa-10000.txt')
+# agent.save_q_table('saved_models', 'test.txt')
+# agent.save_parameters('saved_models', 'DQN-test.pth')
 
 # plot_rewards(average_rewards, alpha, discount, epsilon, goal=100)
 plot_test_rewards(average_rewards, test_rewards, alpha, discount, epsilon, goal=100)

@@ -165,8 +165,7 @@ class DQN(Agent):
         average_test_rewards = np.zeros_like(test_rewards, dtype=float)
         
         # calculate rolling averages
-        # window_size = no_epochs//25
-        window_size = 10
+        window_size = no_epochs//25
         average_test_rewards = [np.mean(test_rewards[i-window_size:i]) if i>window_size else np.mean(epoch_rewards[0:i+1]) for i in range(len(test_rewards))]
         average_rewards = [np.mean(epoch_rewards[i-window_size:i]) if i>window_size else np.mean(epoch_rewards[0:i+1]) for i in range(len(epoch_rewards))]
 
@@ -226,6 +225,24 @@ class DQN(Agent):
             total_reward += black_reward
         
         return total_reward
+
+    def save_parameters(self, folder, filename):
+        # Create the folder if it doesn't exist
+        os.makedirs(folder, exist_ok=True)
+        
+        # Construct the full file path
+        filepath = os.path.join(folder, filename)
+
+        T.save(self.q_network, filepath)
+        print(f"Model successfully written to '{filepath}'")
+
+    def load_parameters(self, folder, filename):
+        # Construct the full file path
+        filepath = os.path.join(folder, filename)
+
+        self.q_network = T.load(filepath)
+        self.target_network = T.load(filepath)
+        print(f"Model successfully loaded from '{filepath}'")
 
     def slice_board(self, board):
         board = np.array(board)
