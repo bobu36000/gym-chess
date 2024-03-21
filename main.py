@@ -2,6 +2,12 @@ import random, time
 import numpy as np
 from collections import defaultdict
 from graphs import plot_rewards, plot_test_rewards
+# PyTorch
+import torch as T
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+
 from q_learning import Q_learning_agent
 from sarsa_lambda import Sarsa_lambda_agent
 from DQN import DQN
@@ -77,7 +83,7 @@ env = ChessEnvV2(player_color="WHITE", opponent="self", log=False, initial_board
 
 epoch = 100
 
-alpha = 0.2
+alpha = 0.02
 discount = 0.9
 epsilon = 0.15
 trace_decay = 0.7
@@ -85,11 +91,11 @@ trace_decay = 0.7
 
 # agent = Q_learning_agent(env, epoch=epoch, alpha=alpha, discount=discount, epsilon=epsilon)
 # agent = Sarsa_lambda_agent(env, epoch=epoch, alpha=alpha, discount=discount, epsilon=epsilon, trace_decay=trace_decay)
-agent = DQN(env, epoch, alpha, discount, epsilon, target_update=100, channels=(24,48,96), layer_dim=128, kernel_size=3, stride=1, batch_size=100, memory_size=100000)
+agent = DQN(env, epoch, alpha, discount, epsilon, target_update=100, channels=(12,12,12), layer_dim=128, kernel_size=3, stride=1, batch_size=10, memory_size=100000)
 
 # ql_agent.load_q_table('saved_tables', 'test_table.txt')
 
-average_rewards, test_rewards = agent.train(no_epochs=100)
+average_rewards, test_rewards = agent.train(no_epochs=1000)
 
 # agent.save_q_table('saved_tables', '4p-Sarsa-10000.txt')
 # agent.save_q_table('saved_tables', 'test.txt')
@@ -99,3 +105,4 @@ plot_test_rewards(average_rewards, test_rewards, alpha, discount, epsilon, goal=
 
 # while(True):
 #     ql_agent.play_human()
+

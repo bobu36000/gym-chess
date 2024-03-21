@@ -35,7 +35,7 @@ class ReplayBuffer(object):
         terminal_batch = self.terminal_memory[batch]
         index_batch = np.arange(self.batch_size, dtype=np.int32)
 
-        return dict(states=state_batch, next_states=next_state_batch, actions=action_batch, next_action=next_action_batch, rewards=reward_batch, terminals=terminal_batch, indexes=index_batch)
+        return dict(states=state_batch, next_states=next_state_batch, actions=action_batch, next_actions=next_action_batch, rewards=reward_batch, terminals=terminal_batch, indexes=index_batch)
 
     def full_batch(self):
         return self.memory_index >= self.batch_size

@@ -29,6 +29,8 @@ class Network(nn.Module):
         self.fc_layers = nn.Sequential(
             nn.Linear(self.fc_input_size, layer_dim),
             nn.ReLU(),
+            nn.Linear(layer_dim, layer_dim),
+            nn.ReLU(),
             nn.Linear(layer_dim, 1)
         )
 
