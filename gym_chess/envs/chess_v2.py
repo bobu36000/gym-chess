@@ -658,7 +658,7 @@ class ChessEnvV2(gym.Env):
         return move
 
     def get_possible_actions(self, state=None, player=None):
-        moves = self.get_possible_moves(state= state, player=player)
+        moves = self.get_possible_moves(state=state, player=player)
         return [self.move_to_action(move) for move in moves]
 
     def get_possible_moves(self, state=None, player=None, attack=False):
@@ -727,7 +727,10 @@ class ChessEnvV2(gym.Env):
         return reversed_board
     
     def reverse_action(self, action):
-        return (4095-action)
+        if(action<4096):
+            return (4095-action)
+        else:
+            raise NotImplementedError("Reversing castling moves not implemented")
     
     def show_encoded_state(self, state):
         for i in range(8):

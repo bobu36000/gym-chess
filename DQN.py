@@ -45,7 +45,11 @@ class DQN(Agent):
         self.batch_size = batch_size
         self.memory = ReplayBuffer(memory_size, batch_size)
 
-        self.slicer = np.vectorize(self.slice_board, signature='(8, 8)->(12, 8, 8)')
+        # vectorized functions
+        self.slicer = np.vectorize(lambda board: self.slice_board(board), signature='(8, 8)->(12, 8, 8)')
+        self.post_move = np.vectorize(lambda state, player, action: self.post_move_state(state, player, action))
+
+        self.empty_slice = np.zeros((12,8,8))
 
     def learn(self):
         # print(f"Learning on step {self.step}")
@@ -65,11 +69,11 @@ class DQN(Agent):
         index_sample = samples["indexes"]
 
         start = time.time()
-        post_move_sample = np.vectorize(self.post_move_state)(state_sample, "WHITE", action_sample)
+        post_move_sample = self.post_move(state_sample, "WHITE", action_sample)
         slice_post_move_sample = T.tensor(np.array([self.slicer(state['board']) for state in post_move_sample])).to(self.device)
         mid= time.time()
-        # next_action_slices = np.array([self.best_action(next_state_sample[i], [self.env.move_to_action(move) for move in self.env.get_possible_moves(state=next_state_sample[i], player=next_state_sample[i]['current_player'])])[1] if not terminal_sample[i] else self.slice_board(next_state_sample[i]) for i in range(len(next_state_sample))])
-        next_action_slices = np.array([self.best_action(next_state_sample[i], self.env.get_possible_actions(state=next_state_sample[i], player=next_state_sample[i]['current_player']))[1] if not terminal_sample[i] else self.slice_board(next_state_sample[i]) for i in range(len(next_state_sample))])
+        next_action_slices = np.array([self.best_action(next_state_sample[i], [self.env.move_to_action(move) for move in self.env.get_possible_moves(state=next_state_sample[i], player=next_state_sample[i]['current_player'])])[1] if not terminal_sample[i] else self.empty_slice for i in range(len(next_state_sample))])
+        # next_action_slices = np.array([self.best_action(next_state_sample[i], self.env.get_possible_actions(state=next_state_sample[i], player=next_state_sample[i]['current_player']))[1] if not terminal_sample[i] else self.empty_slice for i in range(len(next_state_sample))])
         slice_post_next_move_sample = T.tensor(next_action_slices).to(self.device)
         self.post_next_move_time += time.time() - mid
         self.post_move_time += mid - start
@@ -191,7 +195,7 @@ class DQN(Agent):
         return(average_rewards, average_test_rewards)
 
     def best_action(self, state, actions):
-        board_states = np.vectorize(self.post_move_state)(state, "WHITE", actions)
+        board_states = self.post_move(state, "WHITE", actions)
         slices = np.array([self.slicer(state['board']) for state in board_states])
 
         # calculate values of the states from the q network

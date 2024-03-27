@@ -106,12 +106,6 @@ average_rewards, test_rewards = agent.train(no_epochs=100)
 # plot_rewards(average_rewards, lr, discount, epsilon, goal=100)
 plot_test_rewards(average_rewards, test_rewards, lr, discount, epsilon, goal=100)
 
-reward_memory = agent.memory.reward_memory[:agent.memory.memory_index+1]
-average = np.mean(reward_memory)
-not_zeros = np.count_nonzero(reward_memory)
-print(f"{not_zeros} non zero values out of {len(reward_memory)} total samples")
-print(f"Average stored reward = {average}")
-
 # while(True):
 #     ql_agent.play_human()
 
