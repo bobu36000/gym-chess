@@ -12,11 +12,15 @@ import torch.optim as optim
 
 
 class DQN(Agent):
-    def __init__(self, environment, epoch, alpha, discount, epsilon, target_update, channels, layer_dim, kernel_size, stride, batch_size,  memory_size):
+    def __init__(self, environment, epoch, lr, discount, epsilon, target_update, channels, layer_dim, kernel_size, stride, batch_size,  memory_size):
         super().__init__(environment)
 
+        self.learn_time = 0
+        self.post_move_time = 0
+        self.post_next_move_time = 0
+
         # set hyperparameters
-        self.alpha = alpha
+        self.lr = lr
         self.discount = discount
         self.epsilon = epsilon
         self.target_update = target_update
@@ -32,8 +36,8 @@ class DQN(Agent):
         self.layer_dim = layer_dim
         self.kernel_size = kernel_size
         self.stride = stride
-        self.q_network = Network(alpha, channels, layer_dim, kernel_size, stride, reduction=None).to(self.device)
-        self.target_network = Network(alpha, channels, layer_dim, kernel_size, stride, reduction=None).to(self.device)
+        self.q_network = Network(lr, channels, layer_dim, kernel_size, stride, reduction=None).to(self.device)
+        self.target_network = Network(lr, channels, layer_dim, kernel_size, stride, reduction=None).to(self.device)
         self.target_network.load_state_dict(self.q_network.state_dict())
 
         #define Replay Buffer
@@ -56,15 +60,19 @@ class DQN(Agent):
         state_sample = samples["states"]
         next_state_sample = samples["next_states"]
         action_sample = samples["actions"]
-        next_action_sample = samples["next_actions"]
         reward_sample = T.from_numpy(samples["rewards"]).to(self.device)
         terminal_sample = T.from_numpy(samples["terminals"]).to(self.device)
         index_sample = samples["indexes"]
 
-        post_move_sample = np.vectorize(self.post_move_state)(state_sample, "WHITE", action_sample)   #assumes vectorisation is possible with this
+        start = time.time()
+        post_move_sample = np.vectorize(self.post_move_state)(state_sample, "WHITE", action_sample)
         slice_post_move_sample = T.tensor(np.array([self.slicer(state['board']) for state in post_move_sample])).to(self.device)
-        post_next_move_sample = np.vectorize(self.post_move_state)(next_state_sample, "WHITE", next_action_sample)
-        slice_post_next_move_sample = T.tensor(np.array([self.slicer(state['board']) for state in post_next_move_sample])).to(self.device)
+        mid= time.time()
+        # next_action_slices = np.array([self.best_action(next_state_sample[i], [self.env.move_to_action(move) for move in self.env.get_possible_moves(state=next_state_sample[i], player=next_state_sample[i]['current_player'])])[1] if not terminal_sample[i] else self.slice_board(next_state_sample[i]) for i in range(len(next_state_sample))])
+        next_action_slices = np.array([self.best_action(next_state_sample[i], self.env.get_possible_actions(state=next_state_sample[i], player=next_state_sample[i]['current_player']))[1] if not terminal_sample[i] else self.slice_board(next_state_sample[i]) for i in range(len(next_state_sample))])
+        slice_post_next_move_sample = T.tensor(next_action_slices).to(self.device)
+        self.post_next_move_time += time.time() - mid
+        self.post_move_time += mid - start
 
         # calculate q values
         q_value = self.q_network(slice_post_move_sample.to(dtype=T.float32))[index_sample]
@@ -85,7 +93,7 @@ class DQN(Agent):
 
         print("Starting Position:")
         self.env.render()
-        print("Training")
+        print("Training...")
         start = time.time()
 
         epoch_reward = []
@@ -132,16 +140,15 @@ class DQN(Agent):
                 # store transition
                 reward = w_move_reward + b_move_reward
                 available_actions = self.env.possible_actions
-                if(not done):
-                    next_action = self.best_action(new_state, available_actions)
-                else:
-                    next_action = 4096  # action out of range
-                # May cause and error is white's move ends the game and then black doesn't play
-                self.memory.store(pre_w_state, new_state, white_action, next_action, reward, done)
+                # May cause and error if white's move ends the game and then black doesn't play
+                self.memory.store(pre_w_state, new_state, white_action, reward, done)
                 
-                # if there are enough transitions in the memory for a full batch, then learn
-                if self.memory.full_batch():
+                # if there are enough transitions in the memory for a full batch, then learn (every 10 time steps)
+                if self.memory.full_batch() and self.step%10==0:
+                    before_learn = time.time()
                     self.learn()
+                    after_learn = time.time()
+                    self.learn_time += after_learn-before_learn
 
                 episode_reward += reward
                 episode_length += 1
@@ -149,6 +156,7 @@ class DQN(Agent):
 
                 # check if it is the end of an epoch
                 if(self.step % self.epoch == 0):
+                    print(f"Epoch: {self.step//self.epoch}")
                     epoch_rewards.append(np.mean(epoch_reward))
                     test_rewards.append(self.one_episode())
 
@@ -172,9 +180,12 @@ class DQN(Agent):
 
         print("Training complete")
         print(f'Time taken: {round(end-start, 1)}')
+        print(f"Time taken by learn() function: {round(self.learn_time, 1)}")
+        print(f"Time taken by post move section: {round(self.post_move_time, 1)}")
+        print(f"Time taken by post next move section: {round(self.post_next_move_time, 1)}")
         print(f"Number of epochs: {no_epochs}")
         print(f"Average episode length: {np.mean(episode_lengths)}")
-        print(f"Hyperparameters: alpha={self.alpha}, discount={self.discount}, epsilon={self.epsilon}, target_update={self.target_update}")
+        print(f"Hyperparameters: lr={self.lr}, discount={self.discount}, epsilon={self.epsilon}, target_update={self.target_update}")
         print(f"Network Parameters: channels={self.channels}, layer_dim={self.layer_dim}, kernel_size={self.kernel_size}, stride={self.stride}, batch_size={self.batch_size}")
         
         return(average_rewards, average_test_rewards)
@@ -182,19 +193,19 @@ class DQN(Agent):
     def best_action(self, state, actions):
         board_states = np.vectorize(self.post_move_state)(state, "WHITE", actions)
         slices = np.array([self.slicer(state['board']) for state in board_states])
-        
+
         # calculate values of the states from the q network
         net_out = self.q_network(T.tensor(slices.astype('float32')).to(self.device))
 
         # find the max value
         best_index = T.argmax(net_out)
 
-        return actions[best_index]
+        return actions[best_index], slices[best_index]
 
     def choose_egreedy_action(self, state, actions):
         if(random.random() > self.epsilon):
             # select action with the largest value
-            chosen_action = self.best_action(state, actions)
+            chosen_action, _ = self.best_action(state, actions)
         else:
             # select random action
             chosen_action = random.choice(actions)
@@ -210,7 +221,7 @@ class DQN(Agent):
 
             available_actions = environment.possible_actions
 
-            action = self.best_action(environment.state, available_actions)
+            action, _ = self.best_action(environment.state, available_actions)
             
             _, w_move_reward, _, _ = environment.white_step(action)
             total_reward += w_move_reward
@@ -219,7 +230,7 @@ class DQN(Agent):
 
             available_actions = environment.possible_actions
             
-            action = environment.move_to_action(available_actions)
+            action = random.choice(available_actions)
 
             _, black_reward, _, _ = environment.black_step(action)
             total_reward += black_reward

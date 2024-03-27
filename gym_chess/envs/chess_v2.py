@@ -592,6 +592,9 @@ class ChessEnvV2(gym.Env):
             return 64 * 64 + 3
         elif move == RESIGN:
             return 64 * 64 + 4
+        else:
+            print(f"Move: {move}")
+            raise ValueError("Invalid move representation")
 
     def action_to_move(self, action):
         return self._action_to_move(action, as_string=False)
@@ -654,8 +657,8 @@ class ChessEnvV2(gym.Env):
         move = (_from, _to)
         return move
 
-    def get_possible_actions(self):
-        moves = self.get_possible_moves(player=self.current_player)
+    def get_possible_actions(self, state=None, player=None):
+        moves = self.get_possible_moves(state= state, player=player)
         return [self.move_to_action(move) for move in moves]
 
     def get_possible_moves(self, state=None, player=None, attack=False):
