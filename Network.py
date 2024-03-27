@@ -7,7 +7,7 @@ import torch.nn.functional as F
 
 # class for a convolutional neural network
 class Network(nn.Module):
-    def __init__(self, alpha, channels, layer_dim, kernel_size, stride, reduction=None):
+    def __init__(self, lr, channels, layer_dim, kernel_size, stride, reduction=None):
         super().__init__()
         self.input_channels = 12
         self.output_dim = 1
@@ -34,7 +34,7 @@ class Network(nn.Module):
             nn.Linear(layer_dim, 1)
         )
 
-        self.lr = alpha
+        self.lr = lr
         self.optimizer = optim.Adam(self.parameters(), lr=self.lr)
 
         if reduction is not None:

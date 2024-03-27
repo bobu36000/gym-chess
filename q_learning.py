@@ -6,11 +6,11 @@ from gym_chess import ChessEnvV1, ChessEnvV2
 from agent import Agent
 
 class Q_learning_agent(Agent):
-    def __init__(self, environment, epoch = 100, alpha=0.2, discount=1.0, epsilon=0.15):
+    def __init__(self, environment, epoch = 100, lr=0.2, discount=1.0, epsilon=0.15):
         super().__init__(environment)
 
         # set hyperparameters
-        self.alpha = alpha          #learning rate
+        self.lr = lr          #learning rate
         self.discount = discount    #discount factor
         self.epsilon = epsilon      #epsilon greedy term
 
@@ -151,7 +151,7 @@ class Q_learning_agent(Agent):
         print(f"Number of epochs: {no_epochs}")
         print(f"Average episode length: {np.mean(episode_lengths)}")
         print(f"{len(self.Q)} states have been assigned values")
-        print(f"Hyperparameters are: alpha={self.alpha}, discount={self.discount}, epsilon={self.epsilon}")
+        print(f"Hyperparameters are: lr={self.lr}, discount={self.discount}, epsilon={self.epsilon}")
         
         return(average_rewards, average_test_rewards)
     
@@ -186,10 +186,10 @@ class Q_learning_agent(Agent):
     def update_table(self, state, action, reward, new_state=None, best_action=None):
         if new_state == None:
             ## new state is terminal so has a value of 0
-            self.Q[(state, action)] += self.alpha*(reward - self.Q[(state, action)])
+            self.Q[(state, action)] += self.lr*(reward - self.Q[(state, action)])
         else:
             # update Q value
-            self.Q[(state, action)] += self.alpha*(reward + self.discount*self.Q[(new_state, best_action)] - self.Q[(state, action)])
+            self.Q[(state, action)] += self.lr*(reward + self.discount*self.Q[(new_state, best_action)] - self.Q[(state, action)])
 
     def choose_egreedy_action(self, state, actions):
         if(random.random() > self.epsilon):

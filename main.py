@@ -83,27 +83,34 @@ env = ChessEnvV2(player_color="WHITE", opponent="self", log=False, initial_board
 
 epoch = 100
 
-alpha = 0.02
+lr = 0.02
 discount = 0.9
 epsilon = 0.15
 trace_decay = 0.7
 
 
-# agent = Q_learning_agent(env, epoch=epoch, alpha=alpha, discount=discount, epsilon=epsilon)
-# agent = Sarsa_lambda_agent(env, epoch=epoch, alpha=alpha, discount=discount, epsilon=epsilon, trace_decay=trace_decay)
-agent = DQN(env, epoch, alpha, discount, epsilon, target_update=100, channels=(12,12,12), layer_dim=128, kernel_size=3, stride=1, batch_size=10, memory_size=100000)
+# agent = Q_learning_agent(env, epoch=epoch, lr=lr, discount=discount, epsilon=epsilon)
+# agent = Sarsa_lambda_agent(env, epoch=epoch, lr=lr, discount=discount, epsilon=epsilon, trace_decay=trace_decay)
+agent = DQN(env, epoch, lr, discount, epsilon, target_update=100, channels=(12,12,12), layer_dim=128, kernel_size=3, stride=1, batch_size=100, memory_size=100000)
 
 # ql_agent.load_q_table('saved_models', 'test_table.txt')
 # agent.load_parameters('saved_models', 'DQN-test.pth')
 
-average_rewards, test_rewards = agent.train(no_epochs=1000)
+average_rewards, test_rewards = agent.train(no_epochs=100)
 
 # agent.save_q_table('saved_models', '4p-Sarsa-10000.txt')
 # agent.save_q_table('saved_models', 'test.txt')
 # agent.save_parameters('saved_models', 'DQN-test.pth')
 
-# plot_rewards(average_rewards, alpha, discount, epsilon, goal=100)
-plot_test_rewards(average_rewards, test_rewards, alpha, discount, epsilon, goal=100)
+
+# plot_rewards(average_rewards, lr, discount, epsilon, goal=100)
+plot_test_rewards(average_rewards, test_rewards, lr, discount, epsilon, goal=100)
+
+reward_memory = agent.memory.reward_memory[:agent.memory.memory_index+1]
+average = np.mean(reward_memory)
+not_zeros = np.count_nonzero(reward_memory)
+print(f"{not_zeros} non zero values out of {len(reward_memory)} total samples")
+print(f"Average stored reward = {average}")
 
 # while(True):
 #     ql_agent.play_human()

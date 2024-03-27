@@ -6,8 +6,8 @@ from gym_chess import ChessEnvV1, ChessEnvV2
 from q_learning import Q_learning_agent
 
 class Sarsa_lambda_agent(Q_learning_agent):
-    def __init__(self, environment, epoch=100, alpha=0.2, discount=1.0, epsilon=0.15, trace_decay=0.7):
-        super().__init__(environment, epoch=epoch, alpha=alpha, discount=discount, epsilon=epsilon)
+    def __init__(self, environment, epoch=100, lr=0.2, discount=1.0, epsilon=0.15, trace_decay=0.7):
+        super().__init__(environment, epoch=epoch, lr=lr, discount=discount, epsilon=epsilon)
 
         # set remaining hyperparameters
         self.trace_decay = trace_decay
@@ -126,7 +126,7 @@ class Sarsa_lambda_agent(Q_learning_agent):
         print(f"Number of epochs: {no_epochs}")
         print(f"Average episode length: {np.mean(episode_lengths)}")
         print(f"{len(self.Q)} states have been assigned values")
-        print(f"Hyperparameters are: alpha={self.alpha}, discount={self.discount}, epsilon={self.epsilon}, trace_decay: {self.trace_decay}")
+        print(f"Hyperparameters are: lr={self.lr}, discount={self.discount}, epsilon={self.epsilon}, trace_decay: {self.trace_decay}")
         
         return(average_rewards, average_test_rewards)
 
@@ -150,9 +150,9 @@ class Sarsa_lambda_agent(Q_learning_agent):
         for i in range(len(self.trace)):
             trace_parameter = math.pow(self.discount*self.trace_decay, i)
             # print(f"Trace Parameter: {trace_parameter}, i: {i}")
-            # print(f"Value added: {trace_parameter * self.alpha * delta}")
+            # print(f"Value added: {trace_parameter * self.lr * delta}")
             # print(f"To state: {self.trace[-(i+1)]}")
 
-            self.Q[self.trace[-(i+1)]] += trace_parameter * self.alpha * delta
+            self.Q[self.trace[-(i+1)]] += trace_parameter * self.lr * delta
 
         # print("next\n")
