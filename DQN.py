@@ -64,6 +64,7 @@ class DQN(Agent):
         state_sample = samples["states"]
         next_state_sample = samples["next_states"]
         action_sample = samples["actions"]
+        next_available_actions = samples["next_available_actions"]
         reward_sample = T.from_numpy(samples["rewards"]).to(self.device)
         terminal_sample = T.from_numpy(samples["terminals"]).to(self.device)
         index_sample = samples["indexes"]
@@ -72,8 +73,7 @@ class DQN(Agent):
         post_move_sample = self.post_move(state_sample, "WHITE", action_sample)
         slice_post_move_sample = T.tensor(np.array([self.slicer(state['board']) for state in post_move_sample])).to(self.device)
         mid= time.time()
-        next_action_slices = np.array([self.best_action(next_state_sample[i], [self.env.move_to_action(move) for move in self.env.get_possible_moves(state=next_state_sample[i], player=next_state_sample[i]['current_player'])])[1] if not terminal_sample[i] else self.empty_slice for i in range(len(next_state_sample))])
-        # next_action_slices = np.array([self.best_action(next_state_sample[i], self.env.get_possible_actions(state=next_state_sample[i], player=next_state_sample[i]['current_player']))[1] if not terminal_sample[i] else self.empty_slice for i in range(len(next_state_sample))])
+        next_action_slices = np.array([self.best_action(next_state_sample[i], next_available_actions[i])[1] if not terminal_sample[i] else self.empty_slice for i in range(len(next_state_sample))])
         slice_post_next_move_sample = T.tensor(next_action_slices).to(self.device)
         self.post_next_move_time += time.time() - mid
         self.post_move_time += mid - start
@@ -143,9 +143,9 @@ class DQN(Agent):
 
                 # store transition
                 reward = w_move_reward + b_move_reward
-                available_actions = self.env.possible_actions
+                next_available_actions = np.array(self.env.possible_actions)
                 # May cause and error if white's move ends the game and then black doesn't play
-                self.memory.store(pre_w_state, new_state, white_action, reward, done)
+                self.memory.store(pre_w_state, new_state, white_action, next_available_actions, reward, done)
                 
                 # if there are enough transitions in the memory for a full batch, then learn (every 10 time steps)
                 if self.memory.full_batch() and self.step%10==0:
