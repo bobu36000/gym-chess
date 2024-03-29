@@ -11,6 +11,7 @@ import torch.optim as optim
 from q_learning import Q_learning_agent
 from sarsa_lambda import Sarsa_lambda_agent
 from DQN import DQN
+from DQN_Masking import DQN_Masking
 from ReplayBuffer import ReplayBuffer
 import gym
 from gym_chess import ChessEnvV1, ChessEnvV2
@@ -91,12 +92,13 @@ trace_decay = 0.7
 
 # agent = Q_learning_agent(env, epoch=epoch, lr=lr, discount=discount, epsilon=epsilon)
 # agent = Sarsa_lambda_agent(env, epoch=epoch, lr=lr, discount=discount, epsilon=epsilon, trace_decay=trace_decay)
-agent = DQN(env, epoch, lr, discount, epsilon, target_update=100, channels=(12,12,12), layer_dim=128, kernel_size=3, stride=1, batch_size=100, memory_size=100000)
+# agent = DQN(env, epoch, lr, discount, epsilon, target_update=100, channels=(12,12,12), layer_dims=128, kernel_size=3, stride=1, batch_size=100, memory_size=10000)
+agent = DQN_Masking(env, epoch, lr, discount, epsilon, target_update=100, channels=(24,48,96), layer_dims=[2050,4100], kernel_size=3, stride=1, batch_size=100, memory_size=10000)
 
 # ql_agent.load_q_table('saved_models', 'test_table.txt')
 # agent.load_parameters('saved_models', 'DQN-test.pth')
 
-average_rewards, test_rewards = agent.train(no_epochs=100)
+average_rewards, test_rewards = agent.train(no_epochs=500)
 
 # agent.save_q_table('saved_models', '4p-Sarsa-10000.txt')
 # agent.save_q_table('saved_models', 'test.txt')

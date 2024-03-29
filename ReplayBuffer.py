@@ -12,7 +12,7 @@ class ReplayBuffer(object):
         self.state_memory = np.empty(self.memory_size, dtype=dict)   # states are stored in the normal dictionary form
         self.next_state_memory = np.empty(self.memory_size, dtype=dict)
         self.action_memory = np.zeros(self.memory_size, dtype=np.int32)
-        self.next_available_actions_memory = np.zeros(self.memory_size, dtype=np.ndarray)
+        self.next_available_actions_memory = np.empty(self.memory_size, dtype=np.ndarray)
         self.reward_memory = np.zeros(self.memory_size, dtype=np.float32)
         self.terminal_memory = np.zeros(self.memory_size, dtype=np.bool_)
 

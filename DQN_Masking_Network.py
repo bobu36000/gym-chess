@@ -7,10 +7,10 @@ import torch.nn.functional as F
 
 # class for a convolutional neural network
 class Network(nn.Module):
-    def __init__(self, lr, channels, layer_dim, kernel_size, stride, reduction=None):
+    def __init__(self, lr, channels, layer_dims, kernel_size, stride, reduction=None):
         super().__init__()
         self.input_channels = 12
-        self.output_dim = 1
+        self.output_dim = 4100 
 
         # define convolutional layers
         self.conv_layers = nn.Sequential(
@@ -24,14 +24,15 @@ class Network(nn.Module):
 
         # calculate the input size to the fully connected layer
         self.fc_input_size = self._get_fc_input_size()
+        print(f"fc_layer input size = {self.fc_input_size}")
 
         # define fully connected linear layers
         self.fc_layers = nn.Sequential(
-            nn.Linear(self.fc_input_size, layer_dim),
+            nn.Linear(self.fc_input_size, self.output_dim//2),
             nn.ReLU(),
-            nn.Linear(layer_dim, layer_dim),
+            nn.Linear(self.output_dim//2, self.output_dim),
             nn.ReLU(),
-            nn.Linear(layer_dim, 1)
+            nn.Linear(self.output_dim, self.output_dim)
         )
 
         self.lr = lr
