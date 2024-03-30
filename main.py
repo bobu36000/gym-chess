@@ -92,13 +92,13 @@ trace_decay = 0.7
 
 # agent = Q_learning_agent(env, epoch=epoch, lr=lr, discount=discount, epsilon=epsilon)
 # agent = Sarsa_lambda_agent(env, epoch=epoch, lr=lr, discount=discount, epsilon=epsilon, trace_decay=trace_decay)
-# agent = DQN(env, epoch, lr, discount, epsilon, target_update=100, channels=(12,12,12), layer_dims=128, kernel_size=3, stride=1, batch_size=100, memory_size=10000)
-agent = DQN_Masking(env, epoch, lr, discount, epsilon, target_update=100, channels=(24,48,96), layer_dims=[2050,4100], kernel_size=3, stride=1, batch_size=100, memory_size=10000)
+# agent = DQN(env, epoch, lr, discount, epsilon, target_update=100, channels=(24,48,96), layer_dims=[128,128], kernel_size=3, stride=1, batch_size=100, memory_size=10000)
+agent = DQN_Masking(env, epoch, lr, discount, epsilon, target_update=100, channels=(24,48,96), layer_dims=[1025,2050,4100], kernel_size=3, stride=1, batch_size=200, memory_size=10000)
 
 # ql_agent.load_q_table('saved_models', 'test_table.txt')
-# agent.load_parameters('saved_models', 'DQN-test.pth')
+# agent.load_parameters('2024-03-30_15-41-57, 100 epochs', 'model.pth')
 
-average_rewards, test_rewards = agent.train(no_epochs=500)
+average_rewards, test_rewards = agent.train(no_epochs=1000, save=True)
 
 # agent.save_q_table('saved_models', '4p-Sarsa-10000.txt')
 # agent.save_q_table('saved_models', 'test.txt')
@@ -109,5 +109,5 @@ average_rewards, test_rewards = agent.train(no_epochs=500)
 plot_test_rewards(average_rewards, test_rewards, lr, discount, epsilon, goal=100)
 
 # while(True):
-#     ql_agent.play_human()
+#     agent.play_human()
 

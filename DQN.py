@@ -1,5 +1,6 @@
 import random, time, copy, os
 import numpy as np
+from datetime import datetime
 from gym_chess import ChessEnvV1, ChessEnvV2
 from agent import Agent
 from DQN_Network import Network
@@ -18,6 +19,8 @@ class DQN(Agent):
         self.learn_time = 0
         self.post_move_time = 0
         self.post_next_move_time = 0
+        self.rewards = []
+        self.test_rewards = []
 
         # set hyperparameters
         self.lr = lr
@@ -33,7 +36,7 @@ class DQN(Agent):
 
         # define CNN
         self.channels = channels
-        self.layer_dim = layer_dims
+        self.layer_dims = layer_dims
         self.kernel_size = kernel_size
         self.stride = stride
         self.q_network = Network(lr, channels, layer_dims, kernel_size, stride, reduction=None).to(self.device)
@@ -91,7 +94,7 @@ class DQN(Agent):
 
         self.q_network.optimizer.step()
 
-    def train(self, no_epochs):
+    def train(self, no_epochs, save=False):
         epoch_rewards = []
         test_rewards = []
         episode_lengths = []
@@ -172,15 +175,14 @@ class DQN(Agent):
             episode_lengths.append(episode_length)
 
         end = time.time()
-
-        # Create an array to store the rolling averages
-        average_rewards = np.zeros_like(epoch_rewards, dtype=float)
-        average_test_rewards = np.zeros_like(test_rewards, dtype=float)
         
+        self.rewards = epoch_rewards
+        self.test_rewards  = test_rewards
+
         # calculate rolling averages
         window_size = no_epochs//25
-        average_test_rewards = [np.mean(test_rewards[i-window_size:i]) if i>window_size else np.mean(epoch_rewards[0:i+1]) for i in range(len(test_rewards))]
-        average_rewards = [np.mean(epoch_rewards[i-window_size:i]) if i>window_size else np.mean(epoch_rewards[0:i+1]) for i in range(len(epoch_rewards))]
+        average_test_rewards = [np.mean(test_rewards[i-window_size:i+1]) if i>window_size else np.mean(test_rewards[0:i+1]) for i in range(len(test_rewards))]
+        average_rewards = [np.mean(epoch_rewards[i-window_size:i+1]) if i>window_size else np.mean(epoch_rewards[0:i+1]) for i in range(len(epoch_rewards))]
 
 
         print("Training complete")
@@ -191,8 +193,11 @@ class DQN(Agent):
         print(f"Number of epochs: {no_epochs}")
         print(f"Average episode length: {np.mean(episode_lengths)}")
         print(f"Hyperparameters: lr={self.lr}, discount={self.discount}, epsilon={self.epsilon}, target_update={self.target_update}")
-        print(f"Network Parameters: channels={self.channels}, layer_dim={self.layer_dim}, kernel_size={self.kernel_size}, stride={self.stride}, batch_size={self.batch_size}")
+        print(f"Network Parameters: channels={self.channels}, layer_dim={self.layer_dims}, kernel_size={self.kernel_size}, stride={self.stride}, batch_size={self.batch_size}")
         
+        if(save):
+            self.save_training(no_epochs)
+
         return(average_rewards, average_test_rewards)
 
     def best_action(self, state, actions):
@@ -242,6 +247,24 @@ class DQN(Agent):
         
         return total_reward
 
+    def save_training(self, no_epochs):
+        now = datetime.now()
+        date_time = now.strftime("%Y-%m-%d_%H-%M-%S")
+        folder_name = date_time + ", " + str(no_epochs) + " epochs"
+        self.save_parameters(folder_name, "model.pth")
+        self.save_rewards(folder_name, "rewards.txt")
+        
+    def save_rewards(self, folder, filename):
+        # Create the folder if it doesn't exist
+        os.makedirs(folder, exist_ok=True)
+        
+        # Construct the full file path
+        filepath = os.path.join(folder, filename)
+
+        with open(filepath, 'w') as f:
+            f.write(f"{self.rewards}\n{self.test_rewards}")
+        print(f"Reward logs have been written to '{filepath}' successfully.")
+
     def save_parameters(self, folder, filename):
         # Create the folder if it doesn't exist
         os.makedirs(folder, exist_ok=True)
@@ -280,3 +303,34 @@ class DQN(Agent):
         next_state, _ = self.env.next_state(state, player, move)
         return next_state
         
+    def play_human(self):
+        print("Starting Game:")
+        self.env.reset()
+        total_reward = 0
+        
+        # iterate through moves
+        while(not self.env.done):
+            self.env.render()
+
+            available_actions = self.env.possible_actions
+            action, _ = self.best_action(self.env.state, available_actions)
+            
+            _, white_reward, _, _ = self.env.white_step(action)
+            self.env.render()
+            total_reward += white_reward
+            if(self.env.done):
+                break
+
+            moves = self.env.possible_moves
+            print("Possible moves:")
+            for i in range(len(moves)):
+                print(i, self.env.move_to_string(moves[i]))
+            index = int(input())
+            move = moves[index]
+            action = self.env.move_to_action(move)
+
+            _, black_reward, _, _ = self.env.black_step(action)
+            total_reward += black_reward
+        
+        self.env.render()
+        print(f'Total reward: {total_reward}')

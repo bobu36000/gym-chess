@@ -40,24 +40,22 @@ class DQN_Masking(DQN):
         slice_next_state_sample = T.tensor(np.array([self.preprocess_state(state) for state in next_state_sample])).to(self.device)
 
         # calculate q values
-        q_output = self.q_network(slice_state_sample.to(dtype=T.float32))[index_sample]
-        target_output = self.target_network(slice_next_state_sample.to(dtype=T.float32))[index_sample]
-        target_output[terminal_sample] = 0.0
+        q_value = self.q_network(slice_state_sample.to(dtype=T.float32))[index_sample, action_sample]
 
+        target_output = self.target_network(slice_next_state_sample.to(dtype=T.float32))
         # mask invalid actions
-        q_value = T.zeros_like(q_output)
-        q_value[next_action_mask==1] = q_output[next_action_mask==1]
-        q_next = T.zeros_like(target_output)
+        q_next = T.zeros_like(target_output) -1000
         q_next[next_action_mask==1] = target_output[next_action_mask==1]
-
-        reward_sample = reward_sample.reshape((len(reward_sample),1))
+        q_next = q_next.max(dim=1)[0]
+        q_next[terminal_sample] = 0.0
         q_target = reward_sample + self.discount * q_next
+
         loss = self.q_network.loss(q_target, q_value).to(self.device)
         loss.backward()
 
         self.q_network.optimizer.step()
     
-    def train(self, no_epochs):
+    def train(self, no_epochs, save=False):
         epoch_rewards = []
         test_rewards = []
         episode_lengths = []
@@ -118,11 +116,10 @@ class DQN_Masking(DQN):
                 self.memory.store(pre_w_state, new_state, white_action, next_action_mask, reward, done)
                 
                 # if there are enough transitions in the memory for a full batch, then learn (every 10 time steps)
-                if self.memory.full_batch() and self.step%10==0:
+                if self.memory.full_batch() and self.step%5==0:
                     before_learn = time.time()
                     self.learn()
-                    after_learn = time.time()
-                    self.learn_time += after_learn-before_learn
+                    self.learn_time += time.time()-before_learn
 
                 episode_reward += reward
                 episode_length += 1
@@ -141,15 +138,14 @@ class DQN_Masking(DQN):
             episode_lengths.append(episode_length)
 
         end = time.time()
-
-        # Create an array to store the rolling averages
-        average_rewards = np.zeros_like(epoch_rewards, dtype=float)
-        average_test_rewards = np.zeros_like(test_rewards, dtype=float)
         
+        self.rewards = epoch_rewards
+        self.test_rewards  = test_rewards
+
         # calculate rolling averages
-        window_size = no_epochs//25
-        average_test_rewards = [np.mean(test_rewards[i-window_size:i]) if i>window_size else np.mean(epoch_rewards[0:i+1]) for i in range(len(test_rewards))]
-        average_rewards = [np.mean(epoch_rewards[i-window_size:i]) if i>window_size else np.mean(epoch_rewards[0:i+1]) for i in range(len(epoch_rewards))]
+        window_size = no_epochs//10
+        average_test_rewards = [np.mean(test_rewards[i-window_size:i+1]) if i>window_size else np.mean(test_rewards[0:i+1]) for i in range(len(test_rewards))]
+        average_rewards = [np.mean(epoch_rewards[i-window_size:i+1]) if i>window_size else np.mean(epoch_rewards[0:i+1]) for i in range(len(epoch_rewards))]
 
 
         print("Training complete")
@@ -158,8 +154,11 @@ class DQN_Masking(DQN):
         print(f"Number of epochs: {no_epochs}")
         print(f"Average episode length: {np.mean(episode_lengths)}")
         print(f"Hyperparameters: lr={self.lr}, discount={self.discount}, epsilon={self.epsilon}, target_update={self.target_update}")
-        print(f"Network Parameters: channels={self.channels}, layer_dim={self.layer_dim}, kernel_size={self.kernel_size}, stride={self.stride}, batch_size={self.batch_size}")
-        
+        print(f"Network Parameters: channels={self.channels}, layer_dims={self.layer_dims}, kernel_size={self.kernel_size}, stride={self.stride}, batch_size={self.batch_size}")
+
+        if(save):
+            self.save_training(no_epochs)
+
         return(average_rewards, average_test_rewards)
     
     def best_action(self, state, actions):
@@ -174,6 +173,11 @@ class DQN_Masking(DQN):
         _, best_index = T.max(action_values, dim=0)
 
         best_action = actions[best_index.item()]
+
+        # self.env.render_grid(grid=self.env.board_to_grid(board=state['board']))
+        # for i in range(len(actions)):
+        #     print(f"{self.env.action_to_move(actions[i])}: {action_values[i]}")
+
         return best_action, None
     
     def choose_egreedy_action(self, state, actions):
@@ -181,7 +185,7 @@ class DQN_Masking(DQN):
     
     def one_episode(self):
         return super().one_episode()
-    
+
     def save_parameters(self, folder, filename):
         return super().save_parameters(folder, filename)
     
@@ -193,3 +197,6 @@ class DQN_Masking(DQN):
     
     def preprocess_state(self, state):
         return super().preprocess_state(state)
+    
+    def play_human(self):
+        return super().play_human()

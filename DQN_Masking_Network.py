@@ -24,15 +24,16 @@ class Network(nn.Module):
 
         # calculate the input size to the fully connected layer
         self.fc_input_size = self._get_fc_input_size()
-        print(f"fc_layer input size = {self.fc_input_size}")
 
         # define fully connected linear layers
         self.fc_layers = nn.Sequential(
-            nn.Linear(self.fc_input_size, self.output_dim//2),
+            nn.Linear(self.fc_input_size, layer_dims[0]),
             nn.ReLU(),
-            nn.Linear(self.output_dim//2, self.output_dim),
+            nn.Linear(layer_dims[0], layer_dims[1]),
             nn.ReLU(),
-            nn.Linear(self.output_dim, self.output_dim)
+            nn.Linear(layer_dims[1], layer_dims[2]),
+            nn.ReLU(),
+            nn.Linear(layer_dims[2], self.output_dim)
         )
 
         self.lr = lr

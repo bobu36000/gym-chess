@@ -27,11 +27,11 @@ class Network(nn.Module):
 
         # define fully connected linear layers
         self.fc_layers = nn.Sequential(
-            nn.Linear(self.fc_input_size, layer_dims),
+            nn.Linear(self.fc_input_size, layer_dims[0]),
             nn.ReLU(),
-            nn.Linear(layer_dims, layer_dims),
+            nn.Linear(layer_dims[0], layer_dims[1]),
             nn.ReLU(),
-            nn.Linear(layer_dims, self.output_dim)
+            nn.Linear(layer_dims[1], self.output_dim)
         )
 
         self.lr = lr

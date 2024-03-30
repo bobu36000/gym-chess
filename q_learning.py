@@ -224,10 +224,6 @@ class Q_learning_agent(Agent):
 
             available_actions = self.env.possible_actions
             encoded_state = self.env.encode_state()
-            #make sure all actions are initialised in the lookup table
-            for option in available_actions:
-                if((encoded_state, option) not in self.Q):
-                    self.Q[(encoded_state, option)] = 0  #initialise all action value pairs as zero
             action = self.best_action(encoded_state, available_actions)
             
             _, whtie_reward, _, _ = self.env.white_step(action)
