@@ -1,4 +1,5 @@
 import os
+from operator import itemgetter
 import sys
 from collections import defaultdict
 from copy import copy
@@ -735,3 +736,8 @@ class ChessEnvV2(gym.Env):
     def show_encoded_state(self, state):
         for i in range(8):
             print(state[8*i:8*i+8])
+
+    def get_squares_under_attack(self, state, player):
+        attack_moves = self.get_possible_moves(state=state, player=player, attack=True)
+        squares = list(set(map(itemgetter(1), attack_moves)))
+        return np.array(squares)

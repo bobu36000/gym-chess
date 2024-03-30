@@ -9,7 +9,7 @@ import torch.nn.functional as F
 class Network(nn.Module):
     def __init__(self, lr, channels, layer_dims, kernel_size, stride, reduction=None):
         super().__init__()
-        self.input_channels = 12
+        self.input_channels = 14
         self.output_dim = 1
 
         # define convolutional layers

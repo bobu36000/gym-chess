@@ -49,11 +49,12 @@ class DQN(Agent):
         self.memory = ReplayBuffer(memory_size, batch_size)
 
         # vectorized functions
-        self.slicer = np.vectorize(lambda board: self.slice_board(board), signature='(8, 8)->(12, 8, 8)')
+        self.slicer = np.vectorize(lambda board: self.slice_board(board), signature='(8, 8)->(14, 8, 8)')
+        self.attach_slicer = np.vectorize(lambda state: self.attack_slices(state))
         self.post_move = np.vectorize(lambda state, player, action: self.post_move_state(state, player, action))
-        self.preprocess = np.vectorize(lambda state: self.preprocess_state)
+        self.preprocess = np.vectorize(lambda state: self.preprocess_state(state))
 
-        self.empty_slice = np.zeros((12,8,8))
+        self.empty_slice = np.zeros((14,8,8))
 
     def learn(self):
         # print(f"Learning on step {self.step}")
@@ -285,7 +286,7 @@ class DQN(Agent):
 
     def slice_board(self, board):
         board = np.array(board)
-        board_slices = np.zeros((12, 8, 8))
+        board_slices = np.zeros((14, 8, 8))
 
         for i in range(1, 7):
             board_slices[2*i -2][board == i] = 1
@@ -293,8 +294,24 @@ class DQN(Agent):
             
         return board_slices
     
+    def attack_slices(self,state):
+        slices = np.zeros((2,8,8))
+        squares_under_attack = self.env.get_squares_under_attack(state=state, player="WHITE")
+        if(len(squares_under_attack)>0):
+            slices[0][squares_under_attack[:, 0], squares_under_attack[:, 1]] = 1
+
+        squares_under_attack = self.env.get_squares_under_attack(state=state, player="BLACK")
+        if(len(squares_under_attack)>0):
+            slices[1][squares_under_attack[:, 0], squares_under_attack[:, 1]] = 1
+
+        return slices
+    
     def preprocess_state(self, state):
         slice = self.slicer(state['board'])
+        attack_slices = self.attach_slicer(state)
+
+        slice[12] = attack_slices[0]
+        slice[13] = attack_slices[1]
 
         return slice
     
