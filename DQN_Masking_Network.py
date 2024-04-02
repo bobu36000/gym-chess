@@ -18,8 +18,6 @@ class Network(nn.Module):
             nn.ReLU(),
             nn.Conv2d(in_channels=channels[0], out_channels=channels[1], kernel_size=kernel_size, stride=stride),
             nn.ReLU(),
-            nn.Conv2d(in_channels=channels[1], out_channels=channels[2], kernel_size=kernel_size, stride=stride),
-            nn.ReLU()
         )
 
         # calculate the input size to the fully connected layer

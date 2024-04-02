@@ -116,7 +116,7 @@ class DQN_Masking(DQN):
                 self.memory.store(pre_w_state, new_state, white_action, next_action_mask, reward, done)
                 
                 # if there are enough transitions in the memory for a full batch, then learn (every 10 time steps)
-                if self.memory.full_batch() and self.step%5==0:
+                if self.memory.full_batch() and self.step%10==0:
                     before_learn = time.time()
                     self.learn()
                     self.learn_time += time.time()-before_learn

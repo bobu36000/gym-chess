@@ -31,7 +31,9 @@ class Network(nn.Module):
             nn.ReLU(),
             nn.Linear(layer_dims[0], layer_dims[1]),
             nn.ReLU(),
-            nn.Linear(layer_dims[1], self.output_dim)
+            nn.Linear(layer_dims[1], layer_dims[2]),
+            nn.ReLU(),
+            nn.Linear(layer_dims[2], self.output_dim)
         )
 
         self.lr = lr
