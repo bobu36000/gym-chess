@@ -2,8 +2,8 @@ import random, time, copy, os
 import numpy as np
 from gym_chess import ChessEnvV1, ChessEnvV2
 from agent import Agent
-from DQN import DQN
-from DQN_Masking_Network import Network
+from DQN.DQN import DQN
+from DQN_Masking.DQN_Network import Network
 from ReplayBuffer import ReplayBuffer
 # PyTorch
 import torch as T

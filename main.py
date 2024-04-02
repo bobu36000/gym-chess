@@ -10,8 +10,8 @@ import torch.optim as optim
 
 from q_learning import Q_learning_agent
 from sarsa_lambda import Sarsa_lambda_agent
-from DQN import DQN
-from DQN_Masking import DQN_Masking
+from DQN.DQN import DQN
+from DQN_Masking.DQN import DQN_Masking
 from ReplayBuffer import ReplayBuffer
 import gym
 from gym_chess import ChessEnvV1, ChessEnvV2

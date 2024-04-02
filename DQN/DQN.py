@@ -3,7 +3,7 @@ import numpy as np
 from datetime import datetime
 from gym_chess import ChessEnvV1, ChessEnvV2
 from agent import Agent
-from DQN_Network import Network
+from DQN.DQN_Network import Network
 from ReplayBuffer import ReplayBuffer
 # PyTorch
 import torch as T
