@@ -12,7 +12,7 @@ class ReplayBuffer(object):
         self.state_memory = np.empty(self.memory_size, dtype=dict)   # states are stored in the normal dictionary form
         self.next_state_memory = np.empty(self.memory_size, dtype=dict)
         self.action_memory = np.zeros(self.memory_size, dtype=np.int32)
-        self.next_available_actions_memory = np.empty(self.memory_size, dtype=np.ndarray)
+        self.next_available_actions_memory = np.empty((self.memory_size, 4100), dtype=np.int16)
         self.reward_memory = np.zeros(self.memory_size, dtype=np.float32)
         self.terminal_memory = np.zeros(self.memory_size, dtype=np.bool_)
 
@@ -74,13 +74,14 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         state_batch = self.state_memory[batch]
         next_state_batch = self.next_state_memory[batch]
         action_batch = self.action_memory[batch]
+        next_available_actions_batch = self.next_available_actions_memory[batch]
         reward_batch = self.reward_memory[batch]
         terminal_batch = self.terminal_memory[batch]
         weight_batch = np.array(self.weigh_batch(batch, beta), dtype=np.float32)
         batch_batch = np.array(batch, dtype=np.int32)
         index_batch = np.arange(self.batch_size, dtype=np.int32)
 
-        return dict(states=state_batch, next_states=next_state_batch, actions=action_batch, rewards=reward_batch, terminals=terminal_batch, weights=weight_batch, batches=batch_batch, indexes=index_batch)
+        return dict(states=state_batch, next_states=next_state_batch, actions=action_batch, next_available_actions=next_available_actions_batch, rewards=reward_batch, terminals=terminal_batch, weights=weight_batch, batches=batch_batch, indexes=index_batch)
     
     def choice_batch(self):
         index = min(self.memory_index, self.memory_size)

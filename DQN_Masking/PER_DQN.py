@@ -4,19 +4,24 @@ from gym_chess import ChessEnvV1, ChessEnvV2
 from agent import Agent
 from DQN.DQN import DQN
 from DQN_Masking.DQN_Network import Network
-from ReplayBuffer import ReplayBuffer
+from ReplayBuffer import ReplayBuffer, PrioritizedReplayBuffer
 # PyTorch
 import torch as T
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-class DQN_Masking(DQN):
-    def __init__(self, environment, epoch, lr, discount, epsilon, target_update, channels, layer_dims, kernel_size, stride, batch_size, memory_size, learn_interval):
+class PER_DQN_Masking(DQN):
+    def __init__(self, environment, epoch, lr, discount, epsilon, target_update, channels, layer_dims, kernel_size, stride, batch_size, memory_size, learn_interval, alpha, beta, eta):
         super().__init__(environment, epoch, lr, discount, epsilon, target_update, channels, layer_dims, kernel_size, stride, batch_size, memory_size, learn_interval)
 
-        self.q_network = Network(lr, channels, layer_dims, kernel_size, stride, reduction=None).to(self.device)
-        self.target_network = Network(lr, channels, layer_dims, kernel_size, stride, reduction=None).to(self.device)
+        self.q_network = Network(lr, channels, layer_dims, kernel_size, stride, reduction="none").to(self.device)
+        self.target_network = Network(lr, channels, layer_dims, kernel_size, stride, reduction="none").to(self.device)
+
+        self.alpha = alpha
+        self.beta = beta
+        self.eta = eta
+        self.memory = PrioritizedReplayBuffer(memory_size=memory_size, batch_size=batch_size, alpha=alpha)
 
     def learn(self):
         self.q_network.optimizer.zero_grad()
@@ -26,13 +31,15 @@ class DQN_Masking(DQN):
             self.target_network.load_state_dict(self.q_network.state_dict())
 
         # sample a batch from memory and extract values
-        samples = self.memory.sample_batch()
+        samples = self.memory.sample_batch(self.beta)
         state_sample = samples["states"]
         next_state_sample = samples["next_states"]
         action_sample = samples["actions"]
-        next_action_mask = np.vstack(samples["next_available_actions"])
+        next_action_mask = samples["next_available_actions"]
         reward_sample = T.from_numpy(samples["rewards"]).to(self.device)
         terminal_sample = T.from_numpy(samples["terminals"]).to(self.device)
+        weight_sample = T.from_numpy(samples["weights"]).to(self.device)
+        batch_sample = samples["batches"]
         index_sample = samples["indexes"]
 
         # preprocess states
@@ -50,10 +57,15 @@ class DQN_Masking(DQN):
         q_next[terminal_sample] = 0.0
         q_target = reward_sample + self.discount * q_next
 
-        loss = self.q_network.loss(q_target, q_value).to(self.device)
-        loss.backward()
+        loss_sample = self.q_network.loss(q_target, q_value).to(self.device)
+        loss = T.mean(loss_sample * weight_sample)
+        loss.backward()     
 
         self.q_network.optimizer.step()
+
+        loss_sample_2 = loss_sample.cpu().detach().numpy()
+        loss_sample_3 = loss_sample_2 + self.eta
+        self.memory.update_batch(batch_sample, loss_sample_3)
     
     def train(self, no_epochs, save=False):
         epoch_rewards = []
@@ -142,7 +154,6 @@ class DQN_Masking(DQN):
         self.rewards = epoch_rewards
         self.test_rewards  = test_rewards
 
-
         print("Training complete")
         print(f'Time taken: {round(end-start, 1)}')
         print(f"Time taken by learn() function: {round(self.learn_time, 1)}")
@@ -155,6 +166,7 @@ class DQN_Masking(DQN):
             self.save_training(no_epochs)
 
         self.show_rewards(no_epochs)
+
     
     def best_action(self, state, actions):
         slice = np.array(self.preprocess_state(state))

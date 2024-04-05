@@ -1,7 +1,10 @@
 import random, time, copy, os
 import numpy as np
 from datetime import datetime
+
 from gym_chess import ChessEnvV1, ChessEnvV2
+from graphs import plot_test_rewards
+
 from agent import Agent
 from DQN.DQN_Network import Network
 from ReplayBuffer import ReplayBuffer
@@ -13,7 +16,7 @@ import torch.optim as optim
 
 
 class DQN(Agent):
-    def __init__(self, environment, epoch, lr, discount, epsilon, target_update, channels, layer_dims, kernel_size, stride, batch_size,  memory_size):
+    def __init__(self, environment, epoch, lr, discount, epsilon, target_update, channels, layer_dims, kernel_size, stride, batch_size, memory_size, learn_interval):
         super().__init__(environment)
 
         self.learn_time = 0
@@ -27,6 +30,7 @@ class DQN(Agent):
         self.discount = discount
         self.epsilon = epsilon
         self.target_update = target_update
+        self.learn_interval = learn_interval
 
         self.step = 0
         self.epoch = epoch
@@ -50,7 +54,7 @@ class DQN(Agent):
 
         # vectorized functions
         self.slicer = np.vectorize(lambda board: self.slice_board(board), signature='(8, 8)->(14, 8, 8)')
-        self.attach_slicer = np.vectorize(lambda state: self.attack_slices(state))
+        self.attack_slicer = np.vectorize(lambda state: self.attack_slices(state))
         self.post_move = np.vectorize(lambda state, player, action: self.post_move_state(state, player, action))
         self.preprocess = np.vectorize(lambda state: self.preprocess_state(state))
 
@@ -152,8 +156,8 @@ class DQN(Agent):
                 # May cause and error if white's move ends the game and then black doesn't play
                 self.memory.store(pre_w_state, new_state, white_action, next_available_actions, reward, done)
                 
-                # if there are enough transitions in the memory for a full batch, then learn (every 10 time steps)
-                if self.memory.full_batch() and self.step%10==0:
+                # if there are enough transitions in the memory for a full batch, then learn (every *learn_interval* time steps)
+                if self.memory.full_batch() and self.step%self.learn_interval==0:
                     before_learn = time.time()
                     self.learn()
                     after_learn = time.time()
@@ -180,11 +184,6 @@ class DQN(Agent):
         self.rewards = epoch_rewards
         self.test_rewards  = test_rewards
 
-        # calculate rolling averages
-        window_size = no_epochs//25
-        average_test_rewards = [np.mean(test_rewards[i-window_size:i+1]) if i>window_size else np.mean(test_rewards[0:i+1]) for i in range(len(test_rewards))]
-        average_rewards = [np.mean(epoch_rewards[i-window_size:i+1]) if i>window_size else np.mean(epoch_rewards[0:i+1]) for i in range(len(epoch_rewards))]
-
 
         print("Training complete")
         print(f'Time taken: {round(end-start, 1)}')
@@ -193,13 +192,13 @@ class DQN(Agent):
         print(f"Time taken by post next move section: {round(self.post_next_move_time, 1)}")
         print(f"Number of epochs: {no_epochs}")
         print(f"Average episode length: {np.mean(episode_lengths)}")
-        print(f"Hyperparameters: lr={self.lr}, discount={self.discount}, epsilon={self.epsilon}, target_update={self.target_update}")
+        print(f"Hyperparameters: lr={self.lr}, discount={self.discount}, epsilon={self.epsilon}, target_update={self.target_update}, learn_interval={self.learn_interval}")
         print(f"Network Parameters: channels={self.channels}, layer_dim={self.layer_dims}, kernel_size={self.kernel_size}, stride={self.stride}, batch_size={self.batch_size}")
         
         if(save):
             self.save_training(no_epochs)
 
-        return(average_rewards, average_test_rewards)
+        self.show_rewards(no_epochs)
 
     def best_action(self, state, actions):
         board_states = self.post_move(state, "WHITE", actions)
@@ -276,6 +275,25 @@ class DQN(Agent):
         T.save(self.q_network, filepath)
         print(f"Model successfully written to '{filepath}'")
 
+    def load_training(self, folder):
+        # load model
+        self.load_parameters(folder, "model.pth")
+
+        # load rewards
+        self.load_rewards(folder, "rewards.txt")
+
+    def load_rewards(self, folder, filename):
+        # Construct the full file path
+        filepath = os.path.join(folder, filename)
+        
+        with open(filepath, 'r') as f:
+            contents = f.read()
+        parts = contents.split('\n')
+        self.rewards = eval(parts[0])
+        self.test_rewards = eval(parts[1])
+
+        print(f"Rewards logs have been loaded from '{filepath}' successfully.")
+
     def load_parameters(self, folder, filename):
         # Construct the full file path
         filepath = os.path.join(folder, filename)
@@ -283,6 +301,14 @@ class DQN(Agent):
         self.q_network = T.load(filepath)
         self.target_network = T.load(filepath)
         print(f"Model successfully loaded from '{filepath}'")
+
+    def show_rewards(self, no_epochs):
+        print("Showing rewards...")
+        # calculate rolling averages
+        window_size = no_epochs//25
+        average_test_rewards = [np.mean(self.test_rewards[i-window_size:i+1]) if i>window_size else max(0, np.mean(self.test_rewards[0:i+1])) for i in range(len(self.test_rewards))]
+        average_rewards = [np.mean(self.rewards[i-window_size:i+1]) if i>window_size else np.mean(self.rewards[0:i+1]) for i in range(len(self.rewards))]
+        plot_test_rewards(average_rewards, average_test_rewards, self.lr, self.discount, self.epsilon)
 
     def slice_board(self, board):
         board = np.array(board)
@@ -308,7 +334,7 @@ class DQN(Agent):
     
     def preprocess_state(self, state):
         slice = self.slicer(state['board'])
-        attack_slices = self.attach_slicer(state)
+        attack_slices = self.attack_slicer(state)
 
         slice[12] = attack_slices[0]
         slice[13] = attack_slices[1]

@@ -11,7 +11,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-class DQN_Masking(DQN):
+class DDQN_Masking(DQN):
     def __init__(self, environment, epoch, lr, discount, epsilon, target_update, channels, layer_dims, kernel_size, stride, batch_size, memory_size, learn_interval):
         super().__init__(environment, epoch, lr, discount, epsilon, target_update, channels, layer_dims, kernel_size, stride, batch_size, memory_size, learn_interval)
 
@@ -42,11 +42,14 @@ class DQN_Masking(DQN):
         # calculate q values
         q_value = self.q_network(slice_state_sample.to(dtype=T.float32))[index_sample, action_sample]
 
+        # calculate taget values
         target_output = self.target_network(slice_next_state_sample.to(dtype=T.float32))
+        q_output = self.q_network(slice_next_state_sample.to(dtype=T.float32))
         # mask invalid actions
-        q_next = T.zeros_like(target_output) -1000
-        q_next[next_action_mask==1] = target_output[next_action_mask==1]
-        q_next = q_next.max(dim=1)[0]
+        q_output_masked = T.zeros_like(target_output) -1000
+        q_output_masked[next_action_mask==1] = q_output[next_action_mask==1]
+        q_next = target_output[index_sample, q_output_masked.argmax(dim=1)]
+        
         q_next[terminal_sample] = 0.0
         q_target = reward_sample + self.discount * q_next
 
