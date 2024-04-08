@@ -39,22 +39,21 @@ DEFAULT_BOARD = [
 ]
 
 PAWN_BOARD = np.array([[0] * 8] * 8, dtype=np.int8)
-PAWN_BOARD[1, 0] = -PAWN_ID
-PAWN_BOARD[1, 1] = -PAWN_ID
+# PAWN_BOARD[1, 0] = -PAWN_ID
+# PAWN_BOARD[1, 1] = -PAWN_ID
 PAWN_BOARD[1, 2] = -PAWN_ID
 PAWN_BOARD[1, 3] = -PAWN_ID
 PAWN_BOARD[1, 4] = -PAWN_ID
 PAWN_BOARD[1, 5] = -PAWN_ID
-PAWN_BOARD[1, 6] = -PAWN_ID
-PAWN_BOARD[1, 7] = -PAWN_ID
-PAWN_BOARD[6, 0] = PAWN_ID
-PAWN_BOARD[6, 1] = PAWN_ID
+# PAWN_BOARD[1, 6] = -PAWN_ID
+# PAWN_BOARD[1, 7] = -PAWN_ID
+# PAWN_BOARD[6, 0] = PAWN_ID
+# PAWN_BOARD[6, 1] = PAWN_ID
 PAWN_BOARD[6, 2] = PAWN_ID
 PAWN_BOARD[6, 3] = PAWN_ID
 PAWN_BOARD[6, 4] = PAWN_ID
 PAWN_BOARD[6, 5] = PAWN_ID
-PAWN_BOARD[6, 6] = PAWN_ID
-PAWN_BOARD[6, 7] = PAWN_ID
+# PAWN_BOARD[6, 6] = PAWN
 # PAWN_BOARD[7, 4] = KING_ID
 # PAWN_BOARD[0, 4] = -KING_ID
 
@@ -88,10 +87,11 @@ eta = 0.000001
 agent = PER_DDQN_Masking(env, epoch, lr, discount, epsilon, target_update, channels=(28,56,1), layer_dims=[512,1154,1796], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size, learn_interval=learn_interval, alpha=alpha, beta=beta, eta=eta)
 
 # ql_agent.load_q_table('saved_models', 'test_table.txt')
-# agent.load_training('2024-04-05_02-31-58, 10000 epochs')
-# agent.show_rewards(10000)
+# agent.load_training('PER_DDQN_Masking 2024-04-08_13-01-41, 200 epochs')
+# agent.show_rewards(200)
+# agent.show_lengths(200)
 
-agent.train(no_epochs=1000, save=True)
+agent.train(no_epochs=2000, save=True)
 
 # agent.save_q_table('saved_models', '4p-Sarsa-10000.txt')
 # agent.save_q_table('saved_models', 'test.txt')

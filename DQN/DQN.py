@@ -3,7 +3,7 @@ import numpy as np
 from datetime import datetime
 
 from gym_chess import ChessEnvV1, ChessEnvV2
-from graphs import plot_test_rewards
+from graphs import plot_test_rewards, plot_episode_lengths
 
 from agent import Agent
 from DQN.DQN_Network import Network
@@ -19,11 +19,14 @@ class DQN(Agent):
     def __init__(self, environment, epoch, lr, discount, epsilon, target_update, channels, layer_dims, kernel_size, stride, batch_size, memory_size, learn_interval):
         super().__init__(environment)
 
+        self.name = "DQN"
         self.learn_time = 0
         self.post_move_time = 0
         self.post_next_move_time = 0
         self.rewards = []
         self.test_rewards = []
+        self.train_lengths = []
+        self.test_lengths = []
 
         # set hyperparameters
         self.lr = lr
@@ -101,8 +104,10 @@ class DQN(Agent):
 
     def train(self, no_epochs, save=False):
         epoch_rewards = []
-        test_rewards = []
         episode_lengths = []
+        epoch_episode_lengths = []
+        test_rewards = []
+        test_lengths = []
 
         print("Starting Position:")
         self.env.render()
@@ -171,10 +176,14 @@ class DQN(Agent):
                 if(self.step % self.epoch == 0):
                     print(f"Epoch: {self.step//self.epoch}")
                     epoch_rewards.append(np.mean(epoch_reward))
-                    test_rewards.append(self.one_episode())
+                    epoch_episode_lengths.append(np.mean(episode_lengths))
+                    test_reward, test_length = self.one_episode()
+                    test_rewards.append(test_reward)
+                    test_lengths.append(test_length)
 
                     # reset the epoch reward array
                     epoch_reward = []
+                    episode_lengths = []
 
             epoch_reward.append(round(episode_reward, 1))
             episode_lengths.append(episode_length)
@@ -183,6 +192,8 @@ class DQN(Agent):
         
         self.rewards = epoch_rewards
         self.test_rewards  = test_rewards
+        self.train_lengths = epoch_episode_lengths
+        self.test_lengths = test_lengths
 
 
         print("Training complete")
@@ -191,7 +202,6 @@ class DQN(Agent):
         print(f"Time taken by post move section: {round(self.post_move_time, 1)}")
         print(f"Time taken by post next move section: {round(self.post_next_move_time, 1)}")
         print(f"Number of epochs: {no_epochs}")
-        print(f"Average episode length: {np.mean(episode_lengths)}")
         print(f"Hyperparameters: lr={self.lr}, discount={self.discount}, epsilon={self.epsilon}, target_update={self.target_update}, learn_interval={self.learn_interval}")
         print(f"Network Parameters: channels={self.channels}, layer_dim={self.layer_dims}, kernel_size={self.kernel_size}, stride={self.stride}, batch_size={self.batch_size}")
         
@@ -199,6 +209,7 @@ class DQN(Agent):
             self.save_training(no_epochs)
 
         self.show_rewards(no_epochs)
+        self.show_lengths(no_epochs)
 
     def best_action(self, state, actions):
         board_states = self.post_move(state, "WHITE", actions)
@@ -225,10 +236,11 @@ class DQN(Agent):
     def one_episode(self):
         environment = ChessEnvV2(player_color=self.env.player, opponent=self.env.opponent, log=False, initial_board=self.env.initial_board, end = self.env.end)
         total_reward = 0
+        length = 0
 
         # iterate through moves
         while(not environment.done):
-
+            length += 1
             available_actions = environment.possible_actions
 
             action, _ = self.best_action(environment.state, available_actions)
@@ -245,12 +257,12 @@ class DQN(Agent):
             _, black_reward, _, _ = environment.black_step(action)
             total_reward += black_reward
         
-        return total_reward
+        return total_reward, length
 
     def save_training(self, no_epochs):
         now = datetime.now()
         date_time = now.strftime("%Y-%m-%d_%H-%M-%S")
-        folder_name = date_time + ", " + str(no_epochs) + " epochs"
+        folder_name = self.name + " " + date_time + ", " + str(no_epochs) + " epochs"
         self.save_parameters(folder_name, "model.pth")
         self.save_rewards(folder_name, "rewards.txt")
         
@@ -262,7 +274,7 @@ class DQN(Agent):
         filepath = os.path.join(folder, filename)
 
         with open(filepath, 'w') as f:
-            f.write(f"{self.rewards}\n{self.test_rewards}")
+            f.write(f"{self.rewards}\n{self.test_rewards}\n{self.train_lengths}\n{self.test_lengths}")
         print(f"Reward logs have been written to '{filepath}' successfully.")
 
     def save_parameters(self, folder, filename):
@@ -291,6 +303,8 @@ class DQN(Agent):
         parts = contents.split('\n')
         self.rewards = eval(parts[0])
         self.test_rewards = eval(parts[1])
+        self.train_lengths = eval(parts[2])
+        self.test_lengths = eval(parts[3])
 
         print(f"Rewards logs have been loaded from '{filepath}' successfully.")
 
@@ -309,6 +323,13 @@ class DQN(Agent):
         average_test_rewards = [np.mean(self.test_rewards[i-window_size:i+1]) if i>window_size else max(0, np.mean(self.test_rewards[0:i+1])) for i in range(len(self.test_rewards))]
         average_rewards = [np.mean(self.rewards[i-window_size:i+1]) if i>window_size else np.mean(self.rewards[0:i+1]) for i in range(len(self.rewards))]
         plot_test_rewards(average_rewards, average_test_rewards, self.lr, self.discount, self.epsilon)
+
+    def show_lengths(self, no_epochs):
+        # calculate rolling averages
+        window_size = no_epochs//25
+        average_test_lengths = [np.mean(self.test_lengths[i-window_size:i+1]) if i>window_size else np.mean(self.test_lengths[0:i+1]) for i in range(len(self.test_lengths))]
+        average_train_lengths = [np.mean(self.train_lengths[i-window_size:i+1]) if i>window_size else np.mean(self.train_lengths[0:i+1]) for i in range(len(self.train_lengths))]
+        plot_episode_lengths(average_train_lengths, average_test_lengths)
 
     def slice_board(self, board):
         board = np.array(board)

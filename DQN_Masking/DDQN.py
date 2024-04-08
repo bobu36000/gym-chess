@@ -15,6 +15,8 @@ class DDQN_Masking(DQN):
     def __init__(self, environment, epoch, lr, discount, epsilon, target_update, channels, layer_dims, kernel_size, stride, batch_size, memory_size, learn_interval):
         super().__init__(environment, epoch, lr, discount, epsilon, target_update, channels, layer_dims, kernel_size, stride, batch_size, memory_size, learn_interval)
 
+        self.name = "DDQN_Masking"
+
         self.q_network = Network(lr, channels, layer_dims, kernel_size, stride, reduction=None).to(self.device)
         self.target_network = Network(lr, channels, layer_dims, kernel_size, stride, reduction=None).to(self.device)
 
@@ -60,8 +62,10 @@ class DDQN_Masking(DQN):
     
     def train(self, no_epochs, save=False):
         epoch_rewards = []
-        test_rewards = []
         episode_lengths = []
+        epoch_episode_lengths = []
+        test_rewards = []
+        test_lengths = []
 
         print("Starting Position:")
         self.env.render()
@@ -132,10 +136,14 @@ class DDQN_Masking(DQN):
                 if(self.step % self.epoch == 0):
                     print(f"Epoch: {self.step//self.epoch}")
                     epoch_rewards.append(np.mean(epoch_reward))
-                    test_rewards.append(self.one_episode())
+                    epoch_episode_lengths.append(np.mean(episode_lengths))
+                    test_reward, test_length = self.one_episode()
+                    test_rewards.append(test_reward)
+                    test_lengths.append(test_length)
 
                     # reset the epoch reward array
                     epoch_reward = []
+                    episode_lengths = []
 
             epoch_reward.append(round(episode_reward, 1))
             episode_lengths.append(episode_length)
@@ -144,13 +152,14 @@ class DDQN_Masking(DQN):
         
         self.rewards = epoch_rewards
         self.test_rewards  = test_rewards
+        self.train_lengths = epoch_episode_lengths
+        self.test_lengths = test_lengths
 
 
         print("Training complete")
         print(f'Time taken: {round(end-start, 1)}')
         print(f"Time taken by learn() function: {round(self.learn_time, 1)}")
         print(f"Number of epochs: {no_epochs}")
-        print(f"Average episode length: {np.mean(episode_lengths)}")
         print(f"Hyperparameters: lr={self.lr}, discount={self.discount}, epsilon={self.epsilon}, target_update={self.target_update}, learn_interval={self.learn_interval}")
         print(f"Network Parameters: channels={self.channels}, layer_dims={self.layer_dims}, kernel_size={self.kernel_size}, stride={self.stride}, batch_size={self.batch_size}")
 
@@ -158,6 +167,7 @@ class DDQN_Masking(DQN):
             self.save_training(no_epochs)
 
         self.show_rewards(no_epochs)
+        self.show_lengths(no_epochs)
     
     def best_action(self, state, actions):
         slice = np.array(self.preprocess_state(state))
