@@ -2,7 +2,7 @@ import random, time, copy, os
 import numpy as np
 from datetime import datetime
 
-from gym_chess import ChessEnvV1, ChessEnvV2
+from gym_chess import ChessEnvV2
 from graphs import plot_test_rewards, plot_episode_lengths
 
 from agent import Agent
@@ -206,10 +206,10 @@ class DQN(Agent):
         print(f"Network Parameters: channels={self.channels}, layer_dim={self.layer_dims}, kernel_size={self.kernel_size}, stride={self.stride}, batch_size={self.batch_size}")
         
         if(save):
-            self.save_training(no_epochs)
+            self.save_training()
 
-        self.show_rewards(no_epochs)
-        self.show_lengths(no_epochs)
+        self.show_rewards()
+        self.show_lengths()
 
     def best_action(self, state, actions):
         board_states = self.post_move(state, "WHITE", actions)
@@ -259,7 +259,8 @@ class DQN(Agent):
         
         return total_reward, length
 
-    def save_training(self, no_epochs):
+    def save_training(self):
+        no_epochs = len(self.test_rewards)
         now = datetime.now()
         date_time = now.strftime("%Y-%m-%d_%H-%M-%S")
         folder_name = self.name + " " + date_time + ", " + str(no_epochs) + " epochs"
@@ -316,15 +317,18 @@ class DQN(Agent):
         self.target_network = T.load(filepath)
         print(f"Model successfully loaded from '{filepath}'")
 
-    def show_rewards(self, no_epochs):
+    def show_rewards(self):
         print("Showing rewards...")
+        no_epochs = len(self.test_rewards)
         # calculate rolling averages
         window_size = no_epochs//25
         average_test_rewards = [np.mean(self.test_rewards[i-window_size:i+1]) if i>window_size else max(0, np.mean(self.test_rewards[0:i+1])) for i in range(len(self.test_rewards))]
         average_rewards = [np.mean(self.rewards[i-window_size:i+1]) if i>window_size else np.mean(self.rewards[0:i+1]) for i in range(len(self.rewards))]
-        plot_test_rewards(average_rewards, average_test_rewards, self.lr, self.discount, self.epsilon)
+        plot_test_rewards(average_rewards, average_test_rewards)
 
-    def show_lengths(self, no_epochs):
+    def show_lengths(self):
+        print("Showing lengths...")
+        no_epochs = len(self.test_rewards)
         # calculate rolling averages
         window_size = no_epochs//25
         average_test_lengths = [np.mean(self.test_lengths[i-window_size:i+1]) if i>window_size else np.mean(self.test_lengths[0:i+1]) for i in range(len(self.test_lengths))]

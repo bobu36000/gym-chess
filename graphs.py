@@ -16,7 +16,7 @@ def plot_rewards(epoch_rewards, lr, discount, epsilon, goal=100):
     plt.grid(True)
     plt.show()
 
-def plot_test_rewards(epoch_rewards, test_rewards, lr, discount, epsilon, goal=100):
+def plot_test_rewards(epoch_rewards, test_rewards, goal=100):
     x = np.linspace(0, len(epoch_rewards), len(epoch_rewards)+1)
 
     epoch_rewards.insert(0, 0)
@@ -29,9 +29,7 @@ def plot_test_rewards(epoch_rewards, test_rewards, lr, discount, epsilon, goal=1
     plt.title("Reward over the epochs of training")
     plt.xlabel("Epoch")
     plt.ylabel("Total Reward")
-    plt.text(1,95, f"lr={lr}")
-    plt.text(1,90, f"discount={discount}")
-    plt.text(1,85, f"epsilon={epsilon}")
+    plt.ylim(-20, 120)
     plt.grid(True)
     plt.show()
 

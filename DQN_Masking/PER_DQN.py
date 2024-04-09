@@ -1,10 +1,8 @@
-import random, time, copy, os
+import random, time, copy
 import numpy as np
-from gym_chess import ChessEnvV1, ChessEnvV2
-from agent import Agent
 from DQN.DQN import DQN
 from DQN_Masking.DQN_Network import Network
-from ReplayBuffer import ReplayBuffer, PrioritizedReplayBuffer
+from ReplayBuffer import PrioritizedReplayBuffer
 # PyTorch
 import torch as T
 import torch.nn as nn
@@ -172,10 +170,10 @@ class PER_DQN_Masking(DQN):
         print(f"Network Parameters: channels={self.channels}, layer_dims={self.layer_dims}, kernel_size={self.kernel_size}, stride={self.stride}, batch_size={self.batch_size}")
 
         if(save):
-            self.save_training(no_epochs)
+            self.save_training()
 
-        self.show_rewards(no_epochs)
-        self.show_lengths(no_epochs)
+        self.show_rewards()
+        self.show_lengths()
 
     
     def best_action(self, state, actions):
