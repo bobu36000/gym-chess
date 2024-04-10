@@ -16,7 +16,7 @@ import torch.optim as optim
 
 
 class DQN(Agent):
-    def __init__(self, environment, epoch, lr, discount, epsilon, target_update, channels, layer_dims, kernel_size, stride, batch_size, memory_size, learn_interval):
+    def __init__(self, environment, epoch, lr, discount, epsilon_start, epsilon_min, epsilon_frame, target_update, channels, layer_dims, kernel_size, stride, batch_size, memory_size, learn_interval):
         super().__init__(environment)
 
         self.name = "DQN"
@@ -31,7 +31,10 @@ class DQN(Agent):
         # set hyperparameters
         self.lr = lr
         self.discount = discount
-        self.epsilon = epsilon
+        self.epsilon = epsilon_start
+        self.epsilon_min = epsilon_min
+        self.epsilon_frame = epsilon_frame
+        self.epsilon_delta = (epsilon_min - epsilon_start) / epsilon_frame
         self.target_update = target_update
         self.learn_interval = learn_interval
 
@@ -187,6 +190,9 @@ class DQN(Agent):
 
             epoch_reward.append(round(episode_reward, 1))
             episode_lengths.append(episode_length)
+
+            print(f"self.epsilon = {self.epsilon}")
+            self.epsilon = max(self.epsilon + self.epsilon_delta, self.epsilon_min)
 
         end = time.time()
         

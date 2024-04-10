@@ -30,21 +30,22 @@ DEFAULT_BOARD = [
 ]
 
 PAWN_BOARD = np.array([[0] * 8] * 8, dtype=np.int8)
-# PAWN_BOARD[1, 0] = -PAWN_ID
-# PAWN_BOARD[1, 1] = -PAWN_ID
+PAWN_BOARD[1, 0] = -PAWN_ID
+PAWN_BOARD[1, 1] = -PAWN_ID
 PAWN_BOARD[1, 2] = -PAWN_ID
 PAWN_BOARD[1, 3] = -PAWN_ID
 PAWN_BOARD[1, 4] = -PAWN_ID
 PAWN_BOARD[1, 5] = -PAWN_ID
-# PAWN_BOARD[1, 6] = -PAWN_ID
-# PAWN_BOARD[1, 7] = -PAWN_ID
-# PAWN_BOARD[6, 0] = PAWN_ID
-# PAWN_BOARD[6, 1] = PAWN_ID
+PAWN_BOARD[1, 6] = -PAWN_ID
+PAWN_BOARD[1, 7] = -PAWN_ID
+PAWN_BOARD[6, 0] = PAWN_ID
+PAWN_BOARD[6, 1] = PAWN_ID
 PAWN_BOARD[6, 2] = PAWN_ID
 PAWN_BOARD[6, 3] = PAWN_ID
 PAWN_BOARD[6, 4] = PAWN_ID
 PAWN_BOARD[6, 5] = PAWN_ID
-# PAWN_BOARD[6, 6] = PAWN
+PAWN_BOARD[6, 6] = PAWN_ID
+PAWN_BOARD[6, 7] = PAWN_ID
 # PAWN_BOARD[7, 4] = KING_ID
 # PAWN_BOARD[0, 4] = -KING_ID
 
@@ -54,35 +55,40 @@ env = ChessEnvV2(player_color="WHITE", opponent="self", log=False, initial_board
 
 epoch = 100
 
-lr = 0.00025
-discount = 0.99
-epsilon = 0.15
+lr = 0.00025        # from DQN paper
+discount = 0.99     # from DQN paper
+epsilon_start = 1.0 # from DQN paper
+epsilon_min = 0.1   # from DQN paper
+epsilon_frame = 1000000
 trace_decay = 0.7
 
-target_update=100
-batch_size = 32
-memory_size=100000
-learn_interval = 4
+target_update=10000 # from DQN paper
+batch_size = 32     # from DQN paper
+memory_size=1000000 # from DQN paper
+learn_interval = 4  # from DQN paper
 
-alpha = 0.6
-beta = 0.5
+alpha = 0.6         # from PER paper
+beta_start = 0.4    # from PER paper
+beta_max = 1.0      # from PER paper
 eta = 0.000001
 
 # agent = Q_learning_agent(env, epoch=epoch, lr=lr, discount=discount, epsilon=epsilon)
 # agent = Sarsa_lambda_agent(env, epoch=epoch, lr=lr, discount=discount, epsilon=epsilon, trace_decay=trace_decay)
-# agent = DQN(env, epoch, lr, discount, epsilon, target_update=target_update, channels=(24,48,96), layer_dims=[128,128,128], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size)
-# agent = DQN_Masking(env, epoch, lr, discount, epsilon, target_update=target_update, channels=(28,56,112), layer_dims=[512,1024,2048], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size, learn_interval=learn_interval)
-# agent = DDQN_Masking(env, epoch, lr, discount, epsilon, target_update=target_update, channels=(28,56,112), layer_dims=[512,1024,2048], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size, learn_interval=learn_interval)
-# agent = PER_DQN_Masking(env, epoch, lr, discount, epsilon, target_update=target_update, channels=(28,56,1), layer_dims=[512,1154,1796], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size, learn_interval=learn_interval, alpha=alpha, beta=beta, eta=eta)
-agent = PER_DDQN_Masking(env, epoch, lr, discount, epsilon, target_update, channels=(28,56,1), layer_dims=[512,1154,1796], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size, learn_interval=learn_interval, alpha=alpha, beta=beta, eta=eta)
+# agent = DQN(env, epoch, lr, discount, epsilon_start, epsilon_min, epsilon_frame, target_update=target_update, channels=(24,48,96), layer_dims=[128,128,128], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size, learn_interval=learn_interval)
+# agent = DQN_Masking(env, epoch, lr, discount, epsilon_start, epsilon_min, epsilon_frame, target_update=target_update, channels=(28,56,112), layer_dims=[512,1024,2048], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size, learn_interval=learn_interval)
+# agent = DDQN_Masking(env, epoch, lr, discount, epsilon_start, epsilon_min, epsilon_frame, target_update=target_update, channels=(28,56,112), layer_dims=[512,1024,2048], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size, learn_interval=learn_interval)
+# agent = PER_DQN_Masking(env, epoch, lr/4, discount, epsilon_start, epsilon_min, epsilon_frame, target_update=target_update, channels=(28,56,1), layer_dims=[512,1154,1796], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size, learn_interval=learn_interval, alpha=alpha, beta=beta_start, eta=eta)
+agent = PER_DDQN_Masking(env, epoch, lr/4, discount, epsilon_start, epsilon_min, epsilon_frame, target_update, channels=(28,56,1), layer_dims=[512,1154,1796], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size, learn_interval=learn_interval, alpha=alpha, beta=beta_start, eta=eta)
 
 # ql_agent.load_q_table('saved_models', 'test_table.txt')
 
-# agent.train(no_epochs=10000, save=True)
+agent.train(no_epochs=10000, save=False)
 
 # agent.save_q_table('saved_models', '4p-Sarsa-10000.txt')
 # agent.save_q_table('saved_models', 'test.txt')
 
+# agent.load_training('PER_DDQN_Masking 8p 2024-04-09_21-50-52, 10000 epochs')
+# agent.show_rewards()
 
 # while(True):
 #     agent.play_human()

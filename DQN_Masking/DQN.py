@@ -9,8 +9,8 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 class DQN_Masking(DQN):
-    def __init__(self, environment, epoch, lr, discount, epsilon, target_update, channels, layer_dims, kernel_size, stride, batch_size, memory_size, learn_interval):
-        super().__init__(environment, epoch, lr, discount, epsilon, target_update, channels, layer_dims, kernel_size, stride, batch_size, memory_size, learn_interval)
+    def __init__(self, environment, epoch, lr, discount, epsilon_start, epsilon_min, epsilon_frame, target_update, channels, layer_dims, kernel_size, stride, batch_size, memory_size, learn_interval):
+        super().__init__(environment, epoch, lr, discount, epsilon_start, epsilon_min, epsilon_frame, target_update, channels, layer_dims, kernel_size, stride, batch_size, memory_size, learn_interval)
 
         self.name = "DQN_Masking"
 
@@ -138,6 +138,8 @@ class DQN_Masking(DQN):
                     # reset the epoch reward array
                     epoch_reward = []
                     episode_lengths = []
+
+                self.epsilon = max(self.epsilon + self.epsilon_delta, self.epsilon_min)
 
             epoch_reward.append(round(episode_reward, 1))
             episode_lengths.append(episode_length)
