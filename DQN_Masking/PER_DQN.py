@@ -10,7 +10,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 class PER_DQN_Masking(DQN):
-    def __init__(self, environment, epoch, lr, discount, epsilon_start, epsilon_min, epsilon_frame, target_update, channels, layer_dims, kernel_size, stride, batch_size, memory_size, learn_interval, alpha, beta, eta):
+    def __init__(self, environment, epoch, lr, discount, epsilon_start, epsilon_min, epsilon_frame, target_update, channels, layer_dims, kernel_size, stride, batch_size, memory_size, learn_interval, alpha, beta, beta_frame, eta):
         super().__init__(environment, epoch, lr, discount, epsilon_start, epsilon_min, epsilon_frame, target_update, channels, layer_dims, kernel_size, stride, batch_size, memory_size, learn_interval)
 
         self.name = "PER_DQN_Masking"
@@ -20,6 +20,7 @@ class PER_DQN_Masking(DQN):
 
         self.alpha = alpha
         self.beta = beta
+        self.beta_delta = (1.0 - beta) / beta_frame
         self.eta = eta
         self.memory = PrioritizedReplayBuffer(memory_size=memory_size, batch_size=batch_size, alpha=alpha)
 
@@ -153,6 +154,7 @@ class PER_DQN_Masking(DQN):
                     episode_lengths = []
 
                 self.epsilon = max(self.epsilon + self.epsilon_delta, self.epsilon_min)
+                self.beta = min(self.beta + self.beta_delta, 1.0)
 
             epoch_reward.append(round(episode_reward, 1))
             episode_lengths.append(episode_length)

@@ -1,5 +1,8 @@
 import random, time, copy
 import numpy as np
+from datetime import datetime
+from gym_chess import ChessEnvV2
+from graphs import plot_multiple_test_rewards
 from DQN.DQN import DQN
 from DQN_Masking.DQN_Network import Network
 from ReplayBuffer import PrioritizedReplayBuffer
@@ -10,7 +13,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 class PER_DDQN_Masking(DQN):
-    def __init__(self, environment, epoch, lr, discount, epsilon_start, epsilon_min, epsilon_frame, target_update, channels, layer_dims, kernel_size, stride, batch_size, memory_size, learn_interval, alpha, beta, eta):
+    def __init__(self, environment, epoch, lr, discount, epsilon_start, epsilon_min, epsilon_frame, target_update, channels, layer_dims, kernel_size, stride, batch_size, memory_size, learn_interval, alpha, beta, beta_frame, eta):
         super().__init__(environment, epoch, lr, discount, epsilon_start, epsilon_min, epsilon_frame, target_update, channels, layer_dims, kernel_size, stride, batch_size, memory_size, learn_interval)
 
         self.name = "PER_DDQN_Masking"
@@ -20,8 +23,14 @@ class PER_DDQN_Masking(DQN):
 
         self.alpha = alpha
         self.beta = beta
+        self.beta_delta = (1.0 - beta) / beta_frame
         self.eta = eta
         self.memory = PrioritizedReplayBuffer(memory_size=memory_size, batch_size=batch_size, alpha=alpha)
+
+        self.no_previous_models = 5
+        self.previous_models = []
+        self.previous_models.append(copy.deepcopy(self.q_network))
+        self.test_rewards = [[]]
 
     def learn(self):
         self.q_network.optimizer.zero_grad()
@@ -145,18 +154,25 @@ class PER_DDQN_Masking(DQN):
 
                 # check if it is the end of an epoch
                 if(self.step % self.epoch == 0):
-                    print(f"Epoch: {self.step//self.epoch}")
+                    epoch = self.step//self.epoch
+                    print(f"Epoch: {epoch}")
+                    print(f"beta={self.beta}")
+                    if epoch%(no_epochs//self.no_previous_models) == 0:
+                        print("Copying current model...")
+                        self.previous_models.append(copy.deepcopy(self.q_network))
+                        self.test_rewards.append([])
+
                     epoch_rewards.append(np.mean(epoch_reward))
                     epoch_episode_lengths.append(np.mean(episode_lengths))
-                    test_reward, test_length = self.one_episode()
-                    test_rewards.append(test_reward)
-                    test_lengths.append(test_length)
+                    self.one_episode()
+                    # test_lengths.append(test_length)
 
                     # reset the epoch reward array
                     epoch_reward = []
                     episode_lengths = []
 
                 self.epsilon = max(self.epsilon + self.epsilon_delta, self.epsilon_min)
+                self.beta = min(self.beta + self.beta_delta, 1.0)
 
             epoch_reward.append(round(episode_reward, 1))
             episode_lengths.append(episode_length)
@@ -164,7 +180,7 @@ class PER_DDQN_Masking(DQN):
         end = time.time()
         
         self.rewards = epoch_rewards
-        self.test_rewards  = test_rewards
+        # self.test_rewards  = test_rewards
         self.train_lengths = epoch_episode_lengths
         self.test_lengths = test_lengths
 
@@ -179,7 +195,7 @@ class PER_DDQN_Masking(DQN):
             self.save_training()
 
         self.show_rewards()
-        self.show_lengths()
+        # self.show_lengths()
 
     def best_action(self, state, actions):
         slice = np.array(self.preprocess_state(state))
@@ -204,7 +220,48 @@ class PER_DDQN_Masking(DQN):
         return super().choose_egreedy_action(state, actions)
     
     def one_episode(self):
-        return super().one_episode()
+        environment = ChessEnvV2(player_color=self.env.player, opponent=self.env.opponent, log=False, initial_board=self.env.initial_board, end = self.env.end)
+
+        for i in range(len(self.previous_models)):
+            total_reward = 0
+            environment.reset()
+
+            # iterate through moves
+            while(not environment.done):
+                available_actions = environment.possible_actions
+
+                action, _ = self.best_action(environment.state, available_actions)
+                
+                _, w_move_reward, _, _ = environment.white_step(action)
+                total_reward += w_move_reward
+                if(environment.done):
+                    break
+
+
+                temp_state = copy.deepcopy(environment.state)
+                temp_state['board'] = environment.reverse_board(environment.state['board'])
+
+                possible_moves = environment.get_possible_moves(state=temp_state, player=environment.player)
+                available_actions = []
+                for move in possible_moves:
+                    available_actions.append(environment.move_to_action(move))
+                
+                #### find the best action using the specified model ####
+                slice = np.array(self.preprocess_state(temp_state))
+                net_out = self.previous_models[i](T.tensor(slice.astype('float32')).to(self.device))[0]
+                action_values = net_out[available_actions]
+                _, best_index = T.max(action_values, dim=0)
+                best_index = best_index.item()
+                best_action = available_actions[int(best_index)]
+                ####                                                ####
+
+                # reverse action back to Black's POV
+                black_action = environment.reverse_action(best_action)
+
+                _, black_reward, _, _ = environment.black_step(black_action)
+                total_reward += black_reward
+            
+            self.test_rewards[i].append(total_reward)
 
     def save_parameters(self, folder, filename):
         return super().save_parameters(folder, filename)
@@ -220,3 +277,24 @@ class PER_DDQN_Masking(DQN):
     
     def play_human(self):
         return super().play_human()
+    
+    def save_training(self):
+        no_epochs = len(self.test_rewards[0])
+        now = datetime.now()
+        date_time = now.strftime("%Y-%m-%d_%H-%M-%S")
+        folder_name = self.name + " " + date_time + ", " + str(no_epochs) + " epochs"
+        self.save_parameters(folder_name, "model.pth")
+        self.save_rewards(folder_name, "rewards.txt")
+
+    def show_rewards(self):
+        print("Showing rewards...")
+        average_test_rewards = []
+        no_epochs = len(self.test_rewards[0])
+        # calculate rolling averages
+        window_size = no_epochs//25
+        for j in range(len(self.test_rewards)):
+            averages = [np.mean(self.test_rewards[j][i-window_size:i]) if i>window_size else max(-20.0, np.mean(self.test_rewards[j][0:i+1])*i/window_size) for i in range(len(self.test_rewards[j]))]
+            
+            average_test_rewards.append(averages)
+
+        plot_multiple_test_rewards(average_test_rewards)
