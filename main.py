@@ -59,17 +59,17 @@ lr = 0.00025        # from DQN paper
 discount = 0.99     # from DQN paper
 epsilon_start = 1.0 # from DQN paper
 epsilon_min = 0.1   # from DQN paper
-epsilon_frame = 1000000
+epsilon_frame = 20000 # 1,000,000 in DQN paper
 trace_decay = 0.7
 
-target_update=10000 # from DQN paper
+target_update=200 # 10,000 in DQN paper
 batch_size = 32     # from DQN paper
-memory_size=10000 # from DQN paper
+memory_size=100000 # 1,000,000 in DQN paper
 learn_interval = 4  # from DQN paper
 
 alpha = 0.6         # from PER paper
-beta_start = 0.4    # from PER paper
-beta_frame = 1000000
+beta_start = 0.5    # 0.4 in PER paper
+beta_frame = 100000000000
 eta = 0.000001
 
 # agent = Q_learning_agent(env, epoch=epoch, lr=lr, discount=discount, epsilon=epsilon)
@@ -77,8 +77,8 @@ eta = 0.000001
 # agent = DQN(env, epoch, lr, discount, epsilon_start, epsilon_min, epsilon_frame, target_update=target_update, channels=(24,48,96), layer_dims=[128,128,128], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size, learn_interval=learn_interval)
 # agent = DQN_Masking(env, epoch, lr, discount, epsilon_start, epsilon_min, epsilon_frame, target_update=target_update, channels=(28,56,112), layer_dims=[512,1024,2048], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size, learn_interval=learn_interval)
 # agent = DDQN_Masking(env, epoch, lr, discount, epsilon_start, epsilon_min, epsilon_frame, target_update=target_update, channels=(28,56,112), layer_dims=[512,1024,2048], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size, learn_interval=learn_interval)
-# agent = PER_DQN_Masking(env, epoch, lr/4, discount, epsilon_start, epsilon_min, epsilon_frame, target_update, channels=(28,56,1), layer_dims=[512,1154,1796], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size, learn_interval=learn_interval, alpha=alpha, beta=beta_start, beta_frame=beta_frame, eta=eta)
-agent = PER_DDQN_Masking(env, epoch, lr/4, discount, epsilon_start, epsilon_min, epsilon_frame, target_update, channels=(28,56,1), layer_dims=[512,1154,1796], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size, learn_interval=learn_interval, alpha=alpha, beta=beta_start, beta_frame=beta_frame, eta=eta)
+agent = PER_DQN_Masking(env, epoch, lr, discount, epsilon_start, epsilon_min, epsilon_frame, target_update, channels=(28,56,1), layer_dims=[512,1154,1796], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size, learn_interval=learn_interval, alpha=alpha, beta=beta_start, beta_frame=beta_frame, eta=eta)
+# agent = PER_DDQN_Masking(env, epoch, lr, discount, epsilon_start, epsilon_min, epsilon_frame, target_update, channels=(28,56,1), layer_dims=[512,1154,1796], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size, learn_interval=learn_interval, alpha=alpha, beta=beta_start, beta_frame=beta_frame, eta=eta)
 
 # ql_agent.load_q_table('saved_models', 'test_table.txt')
 

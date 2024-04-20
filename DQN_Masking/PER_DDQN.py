@@ -109,6 +109,7 @@ class PER_DDQN_Masking(DQN):
 
                 white_action = self.choose_egreedy_action(self.env.state, available_actions)
                 new_state, w_move_reward, done, _ = self.env.white_step(white_action)
+                reward = w_move_reward
 
                 if(not done):   # black doesn't play if white's move ended the game
                     if(self.env.opponent == 'self'):
@@ -134,7 +135,7 @@ class PER_DDQN_Masking(DQN):
                     new_state, b_move_reward, done, _ = self.env.black_step(black_action)
 
                 # store transition
-                reward = w_move_reward + b_move_reward
+                reward += b_move_reward
                 next_available_actions = np.array(self.env.possible_actions)
                 # create next action mask
                 next_action_mask = np.zeros((4100))
@@ -156,7 +157,6 @@ class PER_DDQN_Masking(DQN):
                 if(self.step % self.epoch == 0):
                     epoch = self.step//self.epoch
                     print(f"Epoch: {epoch}")
-                    print(f"beta={self.beta}")
                     if epoch%(no_epochs//self.no_previous_models) == 0:
                         print("Copying current model...")
                         self.previous_models.append(copy.deepcopy(self.q_network))
