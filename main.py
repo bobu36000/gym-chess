@@ -7,6 +7,7 @@ from DQN_Masking.DQN import DQN_Masking
 from DQN_Masking.DDQN import DDQN_Masking
 from DQN_Masking.PER_DQN import PER_DQN_Masking
 from DQN_Masking.PER_DDQN import PER_DDQN_Masking
+from PPO.PPO import PPO
 import gym
 from gym_chess import ChessEnvV1, ChessEnvV2
 from gym_chess.envs.chess_v1 import (
@@ -80,9 +81,11 @@ eta = 0.000001
 agent = PER_DQN_Masking(env, epoch, lr, discount, epsilon_start, epsilon_min, epsilon_frame, target_update, channels=(28,56,1), layer_dims=[512,1154,1796], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size, learn_interval=learn_interval, alpha=alpha, beta=beta_start, beta_frame=beta_frame, eta=eta)
 # agent = PER_DDQN_Masking(env, epoch, lr, discount, epsilon_start, epsilon_min, epsilon_frame, target_update, channels=(28,56,1), layer_dims=[512,1154,1796], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size, learn_interval=learn_interval, alpha=alpha, beta=beta_start, beta_frame=beta_frame, eta=eta)
 
+agent = PPO(env, epoch=epoch, lr=0.00025, discount=0.99, trace_decay=0.95, eps_clip=0.1, c1=1, c2=0.01, channels=(28,56,1), layer_dims=[512,1154,1796], kernel_size=3, stride=1, batch_size=32, learning_interval=128)
+
 # ql_agent.load_q_table('saved_models', 'test_table.txt')
 
-agent.train(no_epochs=10000, save=False)
+agent.train(no_epochs=1000, save=False)
 
 # agent.save_q_table('saved_models', '4p-Sarsa-10000.txt')
 # agent.save_q_table('saved_models', 'test.txt')
