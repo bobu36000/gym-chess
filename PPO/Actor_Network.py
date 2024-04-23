@@ -3,6 +3,7 @@ import torch as T
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
+from torch.distributions import Categorical
 
 # class for a convolutional neural network
 class Network(nn.Module):
@@ -52,4 +53,4 @@ class Network(nn.Module):
         x[action_mask == 0] = -T.inf
 
         x_masked = F.softmax(x, dim=-1)
-        return x_masked
+        return Categorical(x_masked)

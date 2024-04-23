@@ -78,20 +78,20 @@ eta = 0.000001
 # agent = DQN(env, epoch, lr, discount, epsilon_start, epsilon_min, epsilon_frame, target_update=target_update, channels=(24,48,96), layer_dims=[128,128,128], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size, learn_interval=learn_interval)
 # agent = DQN_Masking(env, epoch, lr, discount, epsilon_start, epsilon_min, epsilon_frame, target_update=target_update, channels=(28,56,112), layer_dims=[512,1024,2048], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size, learn_interval=learn_interval)
 # agent = DDQN_Masking(env, epoch, lr, discount, epsilon_start, epsilon_min, epsilon_frame, target_update=target_update, channels=(28,56,112), layer_dims=[512,1024,2048], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size, learn_interval=learn_interval)
-agent = PER_DQN_Masking(env, epoch, lr, discount, epsilon_start, epsilon_min, epsilon_frame, target_update, channels=(28,56,1), layer_dims=[512,1154,1796], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size, learn_interval=learn_interval, alpha=alpha, beta=beta_start, beta_frame=beta_frame, eta=eta)
+# agent = PER_DQN_Masking(env, epoch, lr, discount, epsilon_start, epsilon_min, epsilon_frame, target_update, channels=(28,56,1), layer_dims=[512,1154,1796], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size, learn_interval=learn_interval, alpha=alpha, beta=beta_start, beta_frame=beta_frame, eta=eta)
 # agent = PER_DDQN_Masking(env, epoch, lr, discount, epsilon_start, epsilon_min, epsilon_frame, target_update, channels=(28,56,1), layer_dims=[512,1154,1796], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size, learn_interval=learn_interval, alpha=alpha, beta=beta_start, beta_frame=beta_frame, eta=eta)
 
-agent = PPO(env, epoch=epoch, lr=0.00025, discount=0.99, trace_decay=0.95, eps_clip=0.1, c1=1, c2=0.01, channels=(28,56,1), layer_dims=[512,1154,1796], kernel_size=3, stride=1, batch_size=32, learning_interval=128)
+agent = PPO(env, epoch=epoch, lr=0.00025, discount=0.99, trace_decay=0.95, eps_clip=0.1, c1=1.0, c2=100.0, channels=(28,56,1), actor_layer_dims=[512,1154,1796], critic_layer_dims=[128,128,128], kernel_size=3, stride=1, batch_size=32, learning_interval=100)
 
 # ql_agent.load_q_table('saved_models', 'test_table.txt')
 
-agent.train(no_epochs=1000, save=False)
+# agent.train(no_epochs=10000, save=True)
 
 # agent.save_q_table('saved_models', '4p-Sarsa-10000.txt')
 # agent.save_q_table('saved_models', 'test.txt')
 
-# agent.load_training('PER_DQN_Masking 4p 2024-04-09_01-02-37, 10000 epochs')
-# agent.show_rewards()
+agent.load_training('PPO 2024-04-22_06-02-28, 10000 epochs')
+agent.show_rewards()
 
 # while(True):
 #     agent.play_human()

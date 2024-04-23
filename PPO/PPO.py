@@ -16,7 +16,7 @@ from torch.distributions import Categorical
 
 
 class PPO(Agent):
-    def __init__(self, env, epoch, lr, discount, trace_decay, eps_clip, c1, c2, channels, layer_dims, kernel_size, stride, batch_size, learning_interval):
+    def __init__(self, env, epoch, lr, discount, trace_decay, eps_clip, c1, c2, channels, actor_layer_dims, critic_layer_dims, kernel_size, stride, batch_size, learning_interval):
         super().__init__(env)
 
         self.name = "PPO"
@@ -40,67 +40,75 @@ class PPO(Agent):
         self.c2 = c2
 
         self.channels = channels
-        self.layer_dims = layer_dims
+        self.actor_layer_dims = actor_layer_dims
+        self.critic_layer_dims = critic_layer_dims
         self.kernel_size = kernel_size
         self.stride = stride
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         # self.device = torch.device("cpu")
         
-        self.critic = CriticNetwork(lr, channels, layer_dims, kernel_size, stride).to(self.device)
-        self.actor = ActorNetwork(lr, channels, layer_dims, kernel_size, stride).to(self.device)
+        self.critic = CriticNetwork(lr, channels, critic_layer_dims, kernel_size, stride).to(self.device)
+        self.actor = ActorNetwork(lr, channels, actor_layer_dims, kernel_size, stride).to(self.device)
 
         self.memory = TradjectoryMemory(batch_size)
 
-    def learn(self):
-        for i in range(6):
-            state_memory, action_memory, action_mask_memory, reward_memory, value_memory, prob_memory, terminal_memory, batches = self.memory.sample_batches()
+        self.learn_time = 0
 
-            def delta(t, terminal=False):
+        self.initial_slice = torch.tensor(self.preprocess_state(self.env.state).astype('float32')).to(self.device)
+
+    def learn(self):
+        state_memory, action_memory, action_mask_memory, reward_memory, value_memory, prob_memory, terminal_memory = self.memory.get_memory()
+        slice_memory = np.array([self.preprocess_state(state) for state in state_memory])
+        
+        def delta(t, terminal=False):
                 if terminal:
                     return reward_memory[t] - value_memory[t]
                 else:
                     return reward_memory[t] + self.discount * value_memory[t+1] - value_memory[t]
 
-            episodes = [[]]
-            episode_count = 1
-            for i in range(len(reward_memory)):
-                episodes[-1].append(i)
-                if(terminal_memory[i]):
-                    episodes.append([])
-                    episode_count += 1
+        episodes = [[]]
+        episode_count = 1
+        for i in range(len(reward_memory)):
+            episodes[-1].append(i)
+            if(terminal_memory[i]):
+                episodes.append([])
+                episode_count += 1
 
-            # calculate advantages on each episode
-            advantages = []
-            for i in range(len(episodes)):
-                episode_advantages = []
-                adv = 0
+        # calculate advantages on each episode
+        advantages = []
+        for i in range(len(episodes)):
+            episode_advantages = []
+            adv = 0
 
-                T = len(episodes[i])
+            T = len(episodes[i])
 
-                for t in range(T-1, -1, -1):
-                    if t == T-1 or terminal_memory[episodes[i][t]]:
-                        adv += delta(episodes[i][t], terminal=True)
-                    else:
-                        adv += (self.discount * self.trace_decay) ** (T - t + 1) * delta(episodes[i][t])
-                    episode_advantages.append(adv)
+            for t in range(T-1, -1, -1):
+                if t == T-1 or terminal_memory[episodes[i][t]]:
+                    adv += delta(episodes[i][t], terminal=True)
+                else:
+                    adv += (self.discount * self.trace_decay) ** (T - t + 1) * delta(episodes[i][t])
+                episode_advantages.append(adv)
 
-                episode_advantages.reverse()
-                advantages.append(episode_advantages)
-            
-            # flatten the advantages list
-            advantages = [advantage for episode in advantages for advantage in episode]
-            advantages = torch.tensor(advantages, dtype=torch.float32).to(self.device)
+            episode_advantages.reverse()
+            advantages.append(episode_advantages)
+        
+        # flatten the advantages list
+        advantages = [advantage for episode in advantages for advantage in episode]
+        advantages = torch.tensor(advantages, dtype=torch.float32).to(self.device)
+
+        for i in range(3):
+            batches = self.memory.get_batches()
 
             values = torch.tensor(value_memory, dtype=torch.float32).to(self.device)
             for batch in batches:
-                states = state_memory[batch]
-                state_slices = torch.tensor(np.array([self.preprocess_state(state) for state in states])).to(self.device).to(dtype=torch.float32)
+                slices = slice_memory[batch]
+                state_slices = torch.tensor(slices).to(self.device).to(dtype=torch.float32)
                 old_probs = torch.tensor(prob_memory[batch], dtype=torch.float32).to(self.device)
                 actions = torch.tensor(action_memory[batch], dtype=torch.float32).to(self.device)
                 action_mask = torch.tensor(action_mask_memory[batch], dtype=torch.float32).to(self.device)
 
-                dist = Categorical(self.actor(state_slices, action_mask))
+                dist =self.actor(state_slices, action_mask)
                 critic_value = self.critic(state_slices)
 
                 new_probs = dist.log_prob(actions)
@@ -112,6 +120,7 @@ class PPO(Agent):
                 L_VF = ((advantages[batch] + values[batch] - critic_value)**2).mean()
 
                 loss = L_clip + self.c1 * L_VF - dist.entropy().mean() * self.c2
+                # print(f"Clip={L_clip}, L_VF={L_VF}, entropy={dist.entropy().mean()}")
 
                 self.actor.optimizer.zero_grad()
                 self.critic.optimizer.zero_grad()
@@ -120,7 +129,7 @@ class PPO(Agent):
                 self.critic.optimizer.step()
             # self.actor.scheduler.step()
             # self.critic.scheduler.step()
-        self.c2 = max(0.001, self.c2 * 0.995)
+        self.c2 = max(1.0, self.c2 * 0.999)
         self.memory.clear()
 
     def train(self, no_epochs, save=False):
@@ -181,7 +190,10 @@ class PPO(Agent):
                 self.memory.store(pre_w_state, white_action, list(white_action_mask), reward, value, log_prob, done)
 
                 if self.step % self.learning_interval == 0 and self.memory.full_batch():
+                    start_learn = time.time()
                     self.learn()
+                    end_learn = time.time()
+                    self.learn_time += end_learn-start_learn
 
                 episode_reward += reward
                 episode_length += 1
@@ -190,6 +202,7 @@ class PPO(Agent):
                 # check if it is the end of an epoch
                 if(self.step % self.epoch == 0):
                     print(f"Epoch: {self.step//self.epoch}")
+                    # print(f"Initial state value = {self.critic(self.initial_slice)}")
                     epoch_rewards.append(np.mean(epoch_reward))
                     epoch_episode_lengths.append(np.mean(episode_lengths))
                     test_reward, test_length = self.one_episode()
@@ -215,7 +228,7 @@ class PPO(Agent):
         print(f"Time taken by learn() function: {round(self.learn_time, 1)}")
         print(f"Number of epochs: {no_epochs}")
         print(f"Hyperparameters: lr={self.lr}, discount={self.discount}, trace_decay={self.trace_decay}, eps_clip={self.eps_clip}, c1={self.c1}, c2={self.c2}")
-        print(f"Network Parameters: channels={self.channels}, layer_dims={self.layer_dims}, kernel_size={self.kernel_size}, stride={self.stride}")
+        print(f"Network Parameters: channels={self.channels}, actor_layer_dims={self.actor_layer_dims}, critic_layer_dims={self.critic_layer_dims}, kernel_size={self.kernel_size}, stride={self.stride}")
 
         if(save):
             self.save_training()
@@ -230,13 +243,8 @@ class PPO(Agent):
         action_mask = torch.zeros(1,4100)
         action_mask[:,actions] = 1
 
-        probs = self.actor(slice, action_mask)
-        probs = torch.squeeze(probs)
-
-        if(probs.sum()==0):
-            print(f"sum is 0")
-
-        distribution = Categorical(probs)
+        distribution = self.actor(slice, action_mask)
+        # print(f"Entropy={distribution.entropy().mean()}")
 
         value = self.critic(slice)
         action = distribution.sample()
@@ -272,6 +280,39 @@ class PPO(Agent):
             total_reward += black_reward
         
         return total_reward, length
+
+    def play_human(self):
+        print("Starting Game:")
+        self.env.reset()
+        total_reward = 0
+        
+        # iterate through moves
+        while(not self.env.done):
+            self.env.render()
+
+            available_actions = self.env.possible_actions
+            action, probs, value = self.choose_action(self.env.state, available_actions)
+            print(f"Probability of chose action = {np.exp(probs)}, value of state = {value}")
+            
+            _, white_reward, _, _ = self.env.white_step(action)
+            self.env.render()
+            total_reward += white_reward
+            if(self.env.done):
+                break
+
+            moves = self.env.possible_moves
+            print("Possible moves:")
+            for i in range(len(moves)):
+                print(i, self.env.move_to_string(moves[i]))
+            index = int(input())
+            move = moves[index]
+            action = self.env.move_to_action(move)
+
+            _, black_reward, _, _ = self.env.black_step(action)
+            total_reward += black_reward
+        
+        self.env.render()
+        print(f'Total reward: {total_reward}')
 
     def preprocess_state(self, state):
         slice = self.slice_board(state['board'])
@@ -346,14 +387,16 @@ class PPO(Agent):
         os.makedirs(folder, exist_ok=True)
         
         # Construct the full file path
-        filepath = os.path.join(folder, filename)
+        actor_filepath = os.path.join(folder, "actor"+filename)
+        critic_filepath = os.path.join(folder, "critic"+filename)
 
-        torch.save(self.q_network, filepath)
-        print(f"Model successfully written to '{filepath}'")
+        torch.save(self.actor, actor_filepath)
+        torch.save(self.critic, critic_filepath)
+        print(f"Model successfully saved")
 
     def load_training(self, folder):
         # load model
-        self.load_parameters(folder, "model.pth")
+        self.load_parameters(folder, "actormodel.pth", "criticmodel.pth")
 
         # load rewards
         self.load_rewards(folder, "rewards.txt")
@@ -372,10 +415,11 @@ class PPO(Agent):
 
         print(f"Rewards logs have been loaded from '{filepath}' successfully.")
 
-    def load_parameters(self, folder, filename):
+    def load_parameters(self, folder, actor_filename, critic_filename):
         # Construct the full file path
-        filepath = os.path.join(folder, filename)
+        actor_filepath = os.path.join(folder, actor_filename)
+        self.actor = torch.load(actor_filepath)
 
-        self.q_network = torch.load(filepath)
-        self.target_network = torch.load(filepath)
-        print(f"Model successfully loaded from '{filepath}'")
+        critic_filepath = os.path.join(folder, critic_filename)
+        self.target_network = torch.load(critic_filepath)
+        print(f"Model successfully loaded from '{critic_filepath}'")

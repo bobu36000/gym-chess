@@ -30,14 +30,17 @@ class TradjectoryMemory():
         self.prob_memory.append(prob)
         self.terminal_memory.append(terminal)
 
-    def sample_batches(self):
+    def get_batches(self):
         n_states = len(self.state_memory)
-        n_batches = n_states // self.batch_size # might need to be 1 as batch size might be just one trajectory
+        n_batches = n_states // self.batch_size
         indicies = np.arange(n_states)
         np.random.shuffle(indicies)
         batches =  [indicies[i * self.batch_size:(i+1) * self.batch_size] for i in range(n_batches)]
 
-        return np.array(self.state_memory), np.array(self.action_memory), np.array(self.action_mask_memory), np.array(self.reward_memory), np.array(self.value_memory), np.array(self.prob_memory), np.array(self.terminal_memory), batches
+        return batches
+    
+    def get_memory(self):
+        return np.array(self.state_memory), np.array(self.action_memory), np.array(self.action_mask_memory), np.array(self.reward_memory), np.array(self.value_memory), np.array(self.prob_memory), np.array(self.terminal_memory)
     
     def full_batch(self):
         return len(self.state_memory) >= self.batch_size
