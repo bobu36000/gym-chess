@@ -9,6 +9,8 @@ class Sarsa_lambda_agent(Q_learning_agent):
     def __init__(self, environment, epoch=100, lr=0.2, discount=1.0, epsilon=0.15, trace_decay=0.7):
         super().__init__(environment, epoch=epoch, lr=lr, discount=discount, epsilon=epsilon)
 
+        self.name = "SARSA lambda"
+
         # set remaining hyperparameters
         self.trace_decay = trace_decay
 
@@ -18,21 +20,27 @@ class Sarsa_lambda_agent(Q_learning_agent):
         print(f"Trace coefficient: {self.trace_decay}, Trace length: {self.trace_length}")
         self.trace = [] # array of tuples in the form (state, action)
 
-    def train(self, no_epochs=0):
+        self.test_rewards = []
+        self.train_rewards = []
+
+        self.step = 0
+
+    def train(self, no_epochs=0, save=False):
         epoch_rewards = []
-        test_rewards = []
         episode_lengths = []
+        epoch_episode_lengths = []
+        test_rewards = []
+        test_lengths = []
 
         print('Starting position:')
         self.env.render()
         print("Training...")
         start = time.time()
 
-        no_time_steps = 0
         epoch_reward = []
 
         # loop for each episode
-        while(no_time_steps/self.epoch < no_epochs):
+        while(self.step/self.epoch < no_epochs):
             total_reward = 0
             self.env.reset()
             self.trace = []
@@ -43,7 +51,7 @@ class Sarsa_lambda_agent(Q_learning_agent):
             # loop for each action in an episode
             done = False
             while(not done):
-                no_time_steps += 1
+                self.step += 1
                 pre_w_state = self.env.encode_state()
 
                 # White's move
@@ -99,27 +107,27 @@ class Sarsa_lambda_agent(Q_learning_agent):
                 episode_length += 1
 
                 # check if it is the end of an epoch
-                if(no_time_steps % self.epoch == 0):
+                if(self.step % self.epoch == 0):
+                    print(f"Epoch: {self.step//self.epoch}")
                     epoch_rewards.append(np.mean(epoch_reward))
-                    test_rewards.append(self.one_episode())
+                    epoch_episode_lengths.append(np.mean(episode_lengths))
+                    test_reward, test_length = self.one_episode()
+                    test_rewards.append(test_reward)
+                    test_lengths.append(test_length)
 
                     # reset the epoch reward array
                     epoch_reward = []
+                    episode_lengths = []
 
             epoch_reward.append(round(total_reward, 1))
             episode_lengths.append(episode_length)
 
         end = time.time()
 
-        # Create an array to store the rolling averages
-        average_rewards = np.zeros_like(epoch_rewards, dtype=float)
-        average_test_rewards = np.zeros_like(test_rewards, dtype=float)
-        
-        # calculate rolling averages
-        window_size = no_epochs//25
-        average_test_rewards = [np.mean(test_rewards[i-window_size:i]) if i>window_size else np.mean(epoch_rewards[0:i+1]) for i in range(len(test_rewards))]
-        average_rewards = [np.mean(epoch_rewards[i-window_size:i]) if i>window_size else np.mean(epoch_rewards[0:i+1]) for i in range(len(epoch_rewards))]
-
+        self.rewards = epoch_rewards
+        self.test_rewards  = test_rewards
+        self.train_lengths = epoch_episode_lengths
+        self.test_lengths = test_lengths
 
         print("Training complete")
         print(f'Time taken: {round(end-start, 1)}')
@@ -128,7 +136,10 @@ class Sarsa_lambda_agent(Q_learning_agent):
         print(f"{len(self.Q)} states have been assigned values")
         print(f"Hyperparameters are: lr={self.lr}, discount={self.discount}, epsilon={self.epsilon}, trace_decay: {self.trace_decay}")
         
-        return(average_rewards, average_test_rewards)
+        if(save):
+            self.save_training()
+
+        self.show_rewards()
 
     def update_table(self, state, action, reward, new_state=None, new_action=None):
         if new_state == None:

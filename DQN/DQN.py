@@ -43,6 +43,7 @@ class DQN(Agent):
 
         self.device = T.device("cuda:0" if T.cuda.is_available() else "cpu")
         # self.device = T.device("cpu")
+        print(f"Device: {self.device}")
 
         # define CNN
         self.channels = channels
@@ -327,7 +328,7 @@ class DQN(Agent):
         print("Showing rewards...")
         no_epochs = len(self.test_rewards)
         # calculate rolling averages
-        window_size = no_epochs//25
+        window_size = 400
         average_test_rewards = [np.mean(self.test_rewards[i-window_size:i+1]) if i>window_size else max(0, np.mean(self.test_rewards[0:i+1])) for i in range(len(self.test_rewards))]
         average_rewards = [np.mean(self.rewards[i-window_size:i+1]) if i>window_size else np.mean(self.rewards[0:i+1]) for i in range(len(self.rewards))]
         plot_test_rewards(average_rewards, average_test_rewards)

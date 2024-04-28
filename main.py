@@ -31,22 +31,22 @@ DEFAULT_BOARD = [
 ]
 
 PAWN_BOARD = np.array([[0] * 8] * 8, dtype=np.int8)
-# PAWN_BOARD[1, 0] = -PAWN_ID
-# PAWN_BOARD[1, 1] = -PAWN_ID
+PAWN_BOARD[1, 0] = -PAWN_ID
+PAWN_BOARD[1, 1] = -PAWN_ID
 PAWN_BOARD[1, 2] = -PAWN_ID
 PAWN_BOARD[1, 3] = -PAWN_ID
 PAWN_BOARD[1, 4] = -PAWN_ID
 PAWN_BOARD[1, 5] = -PAWN_ID
-# PAWN_BOARD[1, 6] = -PAWN_ID
-# PAWN_BOARD[1, 7] = -PAWN_ID
-# PAWN_BOARD[6, 0] = PAWN_ID
-# PAWN_BOARD[6, 1] = PAWN_ID
+PAWN_BOARD[1, 6] = -PAWN_ID
+PAWN_BOARD[1, 7] = -PAWN_ID
+PAWN_BOARD[6, 0] = PAWN_ID
+PAWN_BOARD[6, 1] = PAWN_ID
 PAWN_BOARD[6, 2] = PAWN_ID
 PAWN_BOARD[6, 3] = PAWN_ID
 PAWN_BOARD[6, 4] = PAWN_ID
 PAWN_BOARD[6, 5] = PAWN_ID
-# PAWN_BOARD[6, 6] = PAWN_ID
-# PAWN_BOARD[6, 7] = PAWN_ID
+PAWN_BOARD[6, 6] = PAWN_ID
+PAWN_BOARD[6, 7] = PAWN_ID
 # PAWN_BOARD[7, 4] = KING_ID
 # PAWN_BOARD[0, 4] = -KING_ID
 
@@ -73,25 +73,23 @@ beta_start = 0.5    # 0.4 in PER paper
 beta_frame = 100000000000
 eta = 0.000001
 
-# agent = Q_learning_agent(env, epoch=epoch, lr=lr, discount=discount, epsilon=epsilon)
+# agent = Q_learning_agent(env, epoch=epoch, lr=0.1, discount=0.99, epsilon=0.15)
 # agent = Sarsa_lambda_agent(env, epoch=epoch, lr=lr, discount=discount, epsilon=epsilon, trace_decay=trace_decay)
 # agent = DQN(env, epoch, lr, discount, epsilon_start, epsilon_min, epsilon_frame, target_update=target_update, channels=(24,48,96), layer_dims=[128,128,128], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size, learn_interval=learn_interval)
 # agent = DQN_Masking(env, epoch, lr, discount, epsilon_start, epsilon_min, epsilon_frame, target_update=target_update, channels=(28,56,112), layer_dims=[512,1024,2048], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size, learn_interval=learn_interval)
 # agent = DDQN_Masking(env, epoch, lr, discount, epsilon_start, epsilon_min, epsilon_frame, target_update=target_update, channels=(28,56,112), layer_dims=[512,1024,2048], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size, learn_interval=learn_interval)
 # agent = PER_DQN_Masking(env, epoch, lr, discount, epsilon_start, epsilon_min, epsilon_frame, target_update, channels=(28,56,1), layer_dims=[512,1154,1796], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size, learn_interval=learn_interval, alpha=alpha, beta=beta_start, beta_frame=beta_frame, eta=eta)
-# agent = PER_DDQN_Masking(env, epoch, lr, discount, epsilon_start, epsilon_min, epsilon_frame, target_update, channels=(28,56,1), layer_dims=[512,1154,1796], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size, learn_interval=learn_interval, alpha=alpha, beta=beta_start, beta_frame=beta_frame, eta=eta)
+agent = PER_DDQN_Masking(env, epoch, lr, discount, epsilon_start, epsilon_min, epsilon_frame, target_update, channels=(28,56,1), layer_dims=[512,1154,1796], kernel_size=3, stride=1, batch_size=batch_size, memory_size=memory_size, learn_interval=learn_interval, alpha=alpha, beta=beta_start, beta_frame=beta_frame, eta=eta)
 
-agent = PPO(env, epoch=epoch, lr=0.00025, discount=0.99, trace_decay=0.95, eps_clip=0.1, c1=1.0, c2=100.0, channels=(28,56,1), actor_layer_dims=[512,1154,1796], critic_layer_dims=[128,128,128], kernel_size=3, stride=1, batch_size=32, learning_interval=100)
+# agent = PPO(env, epoch=epoch, lr=0.00025, discount=0.99, trace_decay=0.95, eps_clip=0.1, c1=1.0, c2=100.0, channels=(28,56,1), actor_layer_dims=[512,1154,1796], critic_layer_dims=[128,128,128], kernel_size=3, stride=1, batch_size=32, learning_interval=100)
 
-# ql_agent.load_q_table('saved_models', 'test_table.txt')
+# agent.load_training('DDQN_Masking 4p 2024-04-26_22-51-07, 10000 epochs')
 
-# agent.train(no_epochs=10000, save=True)
+agent.train(no_epochs=100, save=True)
 
-# agent.save_q_table('saved_models', '4p-Sarsa-10000.txt')
-# agent.save_q_table('saved_models', 'test.txt')
-
-agent.load_training('PPO 2024-04-22_06-02-28, 10000 epochs')
-agent.show_rewards()
+# agent.load_training('PPO 2024-04-28_19-00-56, 100 epochs')
+# agent.show_rewards()
+# agent.show_lengths()
 
 # while(True):
 #     agent.play_human()

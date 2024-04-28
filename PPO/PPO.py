@@ -2,7 +2,7 @@ import random, time, copy, os
 import numpy as np
 from datetime import datetime
 from gym_chess import ChessEnvV2
-from graphs import plot_test_rewards, plot_episode_lengths
+from graphs import plot_test_rewards, plot_episode_lengths, plot_multiple_test_rewards
 from agent import Agent
 from PPO.Critic_Network import Network as CriticNetwork
 from PPO.Actor_Network import Network as ActorNetwork
@@ -47,6 +47,7 @@ class PPO(Agent):
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         # self.device = torch.device("cpu")
+        print(f"Device: {self.device}")
         
         self.critic = CriticNetwork(lr, channels, critic_layer_dims, kernel_size, stride).to(self.device)
         self.actor = ActorNetwork(lr, channels, actor_layer_dims, kernel_size, stride).to(self.device)
@@ -55,7 +56,10 @@ class PPO(Agent):
 
         self.learn_time = 0
 
-        self.initial_slice = torch.tensor(self.preprocess_state(self.env.state).astype('float32')).to(self.device)
+        self.no_previous_models = 5
+        self.previous_models = []
+        self.previous_models.append(copy.deepcopy(self.actor))
+        self.version_rewards = [[]]
 
     def learn(self):
         state_memory, action_memory, action_mask_memory, reward_memory, value_memory, prob_memory, terminal_memory = self.memory.get_memory()
@@ -201,13 +205,19 @@ class PPO(Agent):
 
                 # check if it is the end of an epoch
                 if(self.step % self.epoch == 0):
-                    print(f"Epoch: {self.step//self.epoch}")
-                    # print(f"Initial state value = {self.critic(self.initial_slice)}")
+                    epoch = self.step//self.epoch
+                    print(f"Epoch: {epoch}")
+                    if epoch%(no_epochs//self.no_previous_models) == 0:
+                        print("Copying current model...")
+                        self.previous_models.append(copy.deepcopy(self.actor))
+                        self.version_rewards.append([])
+
                     epoch_rewards.append(np.mean(epoch_reward))
                     epoch_episode_lengths.append(np.mean(episode_lengths))
                     test_reward, test_length = self.one_episode()
                     test_rewards.append(test_reward)
                     test_lengths.append(test_length)
+                    self.play_previous()
 
                     # reset the epoch reward array
                     epoch_reward = []
@@ -280,6 +290,50 @@ class PPO(Agent):
             total_reward += black_reward
         
         return total_reward, length
+    
+    def play_previous(self):
+        environment = ChessEnvV2(player_color=self.env.player, opponent=self.env.opponent, log=False, initial_board=self.env.initial_board, end = self.env.end)
+
+        for i in range(len(self.previous_models)):
+            total_reward = 0
+            environment.reset()
+
+            # iterate through moves
+            while(not environment.done):
+                available_actions = environment.possible_actions
+
+                action, _ , _= self.choose_action(environment.state, available_actions)
+                
+                _, w_move_reward, _, _ = environment.white_step(action)
+                total_reward += w_move_reward
+                if(environment.done):
+                    break
+
+
+                temp_state = copy.deepcopy(environment.state)
+                temp_state['board'] = environment.reverse_board(environment.state['board'])
+
+                possible_moves = environment.get_possible_moves(state=temp_state, player=environment.player)
+                available_actions = []
+                for move in possible_moves:
+                    available_actions.append(environment.move_to_action(move))
+                
+                action_mask = torch.zeros(1,4100)
+                action_mask[:,available_actions] = 1
+                
+                #### find the best action using the specified model ####
+                slice = np.array(self.preprocess_state(temp_state))
+                distribution = self.previous_models[i](torch.tensor(slice.astype('float32')).to(self.device), action_mask)
+                best_action = distribution.sample().item()
+                ####                                                ####
+
+                # reverse action back to Black's POV
+                black_action = environment.reverse_action(best_action)
+
+                _, black_reward, _, _ = environment.black_step(black_action)
+                total_reward += black_reward
+            
+            self.version_rewards[i].append(total_reward)
 
     def play_human(self):
         print("Starting Game:")
@@ -349,10 +403,17 @@ class PPO(Agent):
         print("Showing rewards...")
         no_epochs = len(self.test_rewards)
         # calculate rolling averages
-        window_size = no_epochs//25
+        window_size = 400
         average_test_rewards = [np.mean(self.test_rewards[i-window_size:i+1]) if i>window_size else max(0, np.mean(self.test_rewards[0:i+1])) for i in range(len(self.test_rewards))]
         average_rewards = [np.mean(self.rewards[i-window_size:i+1]) if i>window_size else np.mean(self.rewards[0:i+1]) for i in range(len(self.rewards))]
         plot_test_rewards(average_rewards, average_test_rewards)
+
+        average_version_rewards = []
+        for j in range(len(self.version_rewards)):
+            averages = [np.mean(self.version_rewards[j][i-window_size:i]) if i>window_size else max(-20.0, np.mean(self.version_rewards[j][0:i+1])*i/window_size) for i in range(len(self.version_rewards[j]))]
+            
+            average_version_rewards.append(averages)
+        plot_multiple_test_rewards(average_version_rewards)
 
     def show_lengths(self):
         print("Showing lengths...")
@@ -379,7 +440,7 @@ class PPO(Agent):
         filepath = os.path.join(folder, filename)
 
         with open(filepath, 'w') as f:
-            f.write(f"{self.rewards}\n{self.test_rewards}\n{self.train_lengths}\n{self.test_lengths}")
+            f.write(f"{self.rewards}\n{self.test_rewards}\n{self.version_rewards}\n{self.train_lengths}\n{self.test_lengths}")
         print(f"Reward logs have been written to '{filepath}' successfully.")
 
     def save_parameters(self, folder, filename):
@@ -410,8 +471,9 @@ class PPO(Agent):
         parts = contents.split('\n')
         self.rewards = eval(parts[0])
         self.test_rewards = eval(parts[1])
-        self.train_lengths = eval(parts[2])
-        self.test_lengths = eval(parts[3])
+        self.version_rewards = eval(parts[2])
+        self.train_lengths = eval(parts[3])
+        self.test_lengths = eval(parts[4])
 
         print(f"Rewards logs have been loaded from '{filepath}' successfully.")
 

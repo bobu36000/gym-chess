@@ -52,7 +52,7 @@ class DDQN_Masking(DQN):
         q_next[terminal_sample] = 0.0
         q_target = reward_sample + self.discount * q_next
 
-        loss = self.q_network.loss(q_target, q_value).to(self.device)
+        loss = T.mean(self.q_network.loss(q_target, q_value)).to(self.device)
         loss.backward()
 
         self.q_network.optimizer.step()
