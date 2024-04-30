@@ -20,11 +20,6 @@ class Sarsa_lambda_agent(Q_learning_agent):
         print(f"Trace coefficient: {self.trace_decay}, Trace length: {self.trace_length}")
         self.trace = [] # array of tuples in the form (state, action)
 
-        self.test_rewards = []
-        self.train_rewards = []
-
-        self.step = 0
-
     def train(self, no_epochs=0, save=False):
         epoch_rewards = []
         episode_lengths = []
@@ -124,7 +119,7 @@ class Sarsa_lambda_agent(Q_learning_agent):
 
         end = time.time()
 
-        self.rewards = epoch_rewards
+        self.train_rewards = epoch_rewards
         self.test_rewards  = test_rewards
         self.train_lengths = epoch_episode_lengths
         self.test_lengths = test_lengths
@@ -140,6 +135,7 @@ class Sarsa_lambda_agent(Q_learning_agent):
             self.save_training()
 
         self.show_rewards()
+        self.show_lengths()
 
     def update_table(self, state, action, reward, new_state=None, new_action=None):
         if new_state == None:
@@ -155,15 +151,7 @@ class Sarsa_lambda_agent(Q_learning_agent):
         if(len(self.trace) > self.trace_length):
             self.trace.pop(0)
 
-        # print(f"trace: {self.trace}")
-
-        # print(f"Delta: {delta}")
         for i in range(len(self.trace)):
             trace_parameter = math.pow(self.discount*self.trace_decay, i)
-            # print(f"Trace Parameter: {trace_parameter}, i: {i}")
-            # print(f"Value added: {trace_parameter * self.lr * delta}")
-            # print(f"To state: {self.trace[-(i+1)]}")
 
             self.Q[self.trace[-(i+1)]] += trace_parameter * self.lr * delta
-
-        # print("next\n")

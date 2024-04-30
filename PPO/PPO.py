@@ -408,6 +408,7 @@ class PPO(Agent):
         average_rewards = [np.mean(self.rewards[i-window_size:i+1]) if i>window_size else np.mean(self.rewards[0:i+1]) for i in range(len(self.rewards))]
         plot_test_rewards(average_rewards, average_test_rewards)
 
+        window_size = no_epochs//10
         average_version_rewards = []
         for j in range(len(self.version_rewards)):
             averages = [np.mean(self.version_rewards[j][i-window_size:i]) if i>window_size else max(-20.0, np.mean(self.version_rewards[j][0:i+1])*i/window_size) for i in range(len(self.version_rewards[j]))]

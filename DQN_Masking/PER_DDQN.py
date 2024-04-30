@@ -1,8 +1,8 @@
-import random, time, copy
+import random, time, copy, os
 import numpy as np
 from datetime import datetime
 from gym_chess import ChessEnvV2
-from graphs import plot_multiple_test_rewards
+from graphs import plot_test_rewards, plot_multiple_test_rewards
 from DQN.DQN import DQN
 from DQN_Masking.DQN_Network import Network
 from ReplayBuffer import PrioritizedReplayBuffer
@@ -30,7 +30,8 @@ class PER_DDQN_Masking(DQN):
         self.no_previous_models = 5
         self.previous_models = []
         self.previous_models.append(copy.deepcopy(self.q_network))
-        self.test_rewards = [[]]
+        self.version_rewards = [[]]
+
 
     def learn(self):
         self.q_network.optimizer.zero_grad()
@@ -160,12 +161,14 @@ class PER_DDQN_Masking(DQN):
                     if epoch%(no_epochs//self.no_previous_models) == 0:
                         print("Copying current model...")
                         self.previous_models.append(copy.deepcopy(self.q_network))
-                        self.test_rewards.append([])
+                        self.version_rewards.append([])
 
                     epoch_rewards.append(np.mean(epoch_reward))
                     epoch_episode_lengths.append(np.mean(episode_lengths))
-                    self.one_episode()
-                    # test_lengths.append(test_length)
+                    test_reward, test_length = self.one_episode()
+                    test_rewards.append(test_reward)
+                    test_lengths.append(test_length)
+                    self.play_previous()
 
                     # reset the epoch reward array
                     epoch_reward = []
@@ -180,7 +183,7 @@ class PER_DDQN_Masking(DQN):
         end = time.time()
         
         self.rewards = epoch_rewards
-        # self.test_rewards  = test_rewards
+        self.test_rewards  = test_rewards
         self.train_lengths = epoch_episode_lengths
         self.test_lengths = test_lengths
 
@@ -195,7 +198,7 @@ class PER_DDQN_Masking(DQN):
             self.save_training()
 
         self.show_rewards()
-        # self.show_lengths()
+        self.show_lengths()
 
     def best_action(self, state, actions):
         slice = np.array(self.preprocess_state(state))
@@ -220,6 +223,32 @@ class PER_DDQN_Masking(DQN):
         return super().choose_egreedy_action(state, actions)
     
     def one_episode(self):
+        environment = ChessEnvV2(player_color=self.env.player, opponent=self.env.opponent, log=False, initial_board=self.env.initial_board, end = self.env.end)
+        total_reward = 0
+        length = 0
+
+        # iterate through moves
+        while(not environment.done):
+            length += 1
+            available_actions = environment.possible_actions
+
+            action, _ = self.best_action(environment.state, available_actions)
+            
+            _, w_move_reward, _, _ = environment.white_step(action)
+            total_reward += w_move_reward
+            if(environment.done):
+                break
+
+            available_actions = environment.possible_actions
+            
+            action = random.choice(available_actions)
+
+            _, black_reward, _, _ = environment.black_step(action)
+            total_reward += black_reward
+        
+        return total_reward, length
+
+    def play_previous(self):
         environment = ChessEnvV2(player_color=self.env.player, opponent=self.env.opponent, log=False, initial_board=self.env.initial_board, end = self.env.end)
 
         for i in range(len(self.previous_models)):
@@ -261,14 +290,40 @@ class PER_DDQN_Masking(DQN):
                 _, black_reward, _, _ = environment.black_step(black_action)
                 total_reward += black_reward
             
-            self.test_rewards[i].append(total_reward)
+            self.version_rewards[i].append(total_reward)
 
     def save_parameters(self, folder, filename):
         return super().save_parameters(folder, filename)
     
+    def save_rewards(self, folder, filename):
+        # Create the folder if it doesn't exist
+        os.makedirs(folder, exist_ok=True)
+        
+        # Construct the full file path
+        filepath = os.path.join(folder, filename)
+
+        with open(filepath, 'w') as f:
+            f.write(f"{self.rewards}\n{self.test_rewards}\n{self.version_rewards}\n{self.train_lengths}\n{self.test_lengths}")
+        print(f"Reward logs have been written to '{filepath}' successfully.")
+
     def load_parameters(self, folder, filename):
         return super().load_parameters(folder, filename)
     
+    def load_rewards(self, folder, filename):
+        # Construct the full file path
+        filepath = os.path.join(folder, filename)
+        
+        with open(filepath, 'r') as f:
+            contents = f.read()
+        parts = contents.split('\n')
+        self.rewards = eval(parts[0])
+        self.test_rewards = eval(parts[1])
+        self.version_rewards = eval(parts[2])
+        self.train_lengths = eval(parts[3])
+        self.test_lengths = eval(parts[4])
+
+        print(f"Rewards logs have been loaded from '{filepath}' successfully.")
+
     def slice_board(self, board):
         return super().slice_board(board)
     
@@ -279,7 +334,7 @@ class PER_DDQN_Masking(DQN):
         return super().play_human()
     
     def save_training(self):
-        no_epochs = len(self.test_rewards[0])
+        no_epochs = len(self.test_rewards)
         now = datetime.now()
         date_time = now.strftime("%Y-%m-%d_%H-%M-%S")
         folder_name = self.name + " " + date_time + ", " + str(no_epochs) + " epochs"
@@ -289,12 +344,17 @@ class PER_DDQN_Masking(DQN):
     def show_rewards(self):
         print("Showing rewards...")
         average_test_rewards = []
-        no_epochs = len(self.test_rewards[0])
+        no_epochs = len(self.test_rewards)
         # calculate rolling averages
-        window_size = no_epochs//25
-        for j in range(len(self.test_rewards)):
-            averages = [np.mean(self.test_rewards[j][i-window_size:i]) if i>window_size else max(-20.0, np.mean(self.test_rewards[j][0:i+1])*i/window_size) for i in range(len(self.test_rewards[j]))]
-            
-            average_test_rewards.append(averages)
+        window_size = 400
+        average_test_rewards = [np.mean(self.test_rewards[i-window_size:i+1]) if i>window_size else max(0, np.mean(self.test_rewards[0:i+1])) for i in range(len(self.test_rewards))]
+        average_rewards = [np.mean(self.rewards[i-window_size:i+1]) if i>window_size else np.mean(self.rewards[0:i+1]) for i in range(len(self.rewards))]
+        plot_test_rewards(average_rewards, average_test_rewards)
 
-        plot_multiple_test_rewards(average_test_rewards)
+        window_size = no_epochs//10
+        average_version_rewards = []
+        for j in range(len(self.version_rewards)):
+            averages = [np.mean(self.version_rewards[j][i-window_size:i]) if i>window_size else max(-20.0, np.mean(self.version_rewards[j][0:i+1])*i/window_size) for i in range(len(self.version_rewards[j]))]
+            
+            average_version_rewards.append(averages)
+        plot_multiple_test_rewards(average_version_rewards)

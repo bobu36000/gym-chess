@@ -63,5 +63,6 @@ def plot_episode_lengths(train_lengths, test_lengths):
     plt.title("Episode lengths over the epochs of training")
     plt.xlabel("Epoch")
     plt.ylabel("Episode Length")
+    plt.ylim(7,21)
     plt.grid(True)
     plt.show()

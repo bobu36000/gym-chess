@@ -168,6 +168,7 @@ class Q_learning_agent(Agent):
             self.save_training()
 
         self.show_rewards()
+        self.show_lengths()
         
     
     def one_episode(self):
