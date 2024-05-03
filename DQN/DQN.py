@@ -21,8 +21,6 @@ class DQN(Agent):
 
         self.name = "DQN"
         self.learn_time = 0
-        self.post_move_time = 0
-        self.post_next_move_time = 0
         self.rewards = []
         self.test_rewards = []
         self.train_lengths = []
@@ -43,7 +41,6 @@ class DQN(Agent):
 
         self.device = T.device("cuda:0" if T.cuda.is_available() else "cpu")
         # self.device = T.device("cpu")
-        print(f"Device: {self.device}")
 
         # define CNN
         self.channels = channels
@@ -68,7 +65,6 @@ class DQN(Agent):
         self.empty_slice = np.zeros((14,8,8))
 
     def learn(self):
-        # print(f"Learning on step {self.step}")
         self.q_network.optimizer.zero_grad()
 
         if self.step % self.target_update == 0:
@@ -85,14 +81,10 @@ class DQN(Agent):
         terminal_sample = T.from_numpy(samples["terminals"]).to(self.device)
         index_sample = samples["indexes"]
 
-        start = time.time()
         post_move_sample = self.post_move(state_sample, "WHITE", action_sample)
         slice_post_move_sample = T.tensor(np.array([self.preprocess_state(state) for state in post_move_sample])).to(self.device)
-        mid= time.time()
         next_action_slices = np.array([self.best_action(next_state_sample[i], next_available_actions[i])[1] if not terminal_sample[i] else self.empty_slice for i in range(len(next_state_sample))])
         slice_post_next_move_sample = T.tensor(next_action_slices).to(self.device)
-        self.post_next_move_time += time.time() - mid
-        self.post_move_time += mid - start
 
         # calculate q values
         q_value = self.q_network(slice_post_move_sample.to(dtype=T.float32))[index_sample]
@@ -192,7 +184,6 @@ class DQN(Agent):
             epoch_reward.append(round(episode_reward, 1))
             episode_lengths.append(episode_length)
 
-            print(f"self.epsilon = {self.epsilon}")
             self.epsilon = max(self.epsilon + self.epsilon_delta, self.epsilon_min)
 
         end = time.time()
@@ -206,8 +197,6 @@ class DQN(Agent):
         print("Training complete")
         print(f'Time taken: {round(end-start, 1)}')
         print(f"Time taken by learn() function: {round(self.learn_time, 1)}")
-        print(f"Time taken by post move section: {round(self.post_move_time, 1)}")
-        print(f"Time taken by post next move section: {round(self.post_next_move_time, 1)}")
         print(f"Number of epochs: {no_epochs}")
         print(f"Hyperparameters: lr={self.lr}, discount={self.discount}, epsilon={self.epsilon}, target_update={self.target_update}, learn_interval={self.learn_interval}")
         print(f"Network Parameters: channels={self.channels}, layer_dim={self.layer_dims}, kernel_size={self.kernel_size}, stride={self.stride}, batch_size={self.batch_size}")

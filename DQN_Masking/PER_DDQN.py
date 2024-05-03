@@ -213,14 +213,17 @@ class PER_DDQN_Masking(DQN):
 
         best_action = actions[best_index.item()]
 
-        # self.env.render_grid(grid=self.env.board_to_grid(board=state['board']))
-        # for i in range(len(actions)):
-        #     print(f"{self.env.action_to_move(actions[i])}: {action_values[i]}")
-
-        return best_action, None
+        return best_action
     
     def choose_egreedy_action(self, state, actions):
-        return super().choose_egreedy_action(state, actions)
+        if(random.random() > self.epsilon):
+            # select action with the largest value
+            chosen_action = self.best_action(state, actions)
+        else:
+            # select random action
+            chosen_action = random.choice(actions)
+        
+        return chosen_action
     
     def one_episode(self):
         environment = ChessEnvV2(player_color=self.env.player, opponent=self.env.opponent, log=False, initial_board=self.env.initial_board, end = self.env.end)
@@ -232,7 +235,7 @@ class PER_DDQN_Masking(DQN):
             length += 1
             available_actions = environment.possible_actions
 
-            action, _ = self.best_action(environment.state, available_actions)
+            action = self.best_action(environment.state, available_actions)
             
             _, w_move_reward, _, _ = environment.white_step(action)
             total_reward += w_move_reward
@@ -259,7 +262,7 @@ class PER_DDQN_Masking(DQN):
             while(not environment.done):
                 available_actions = environment.possible_actions
 
-                action, _ = self.best_action(environment.state, available_actions)
+                action = self.best_action(environment.state, available_actions)
                 
                 _, w_move_reward, _, _ = environment.white_step(action)
                 total_reward += w_move_reward

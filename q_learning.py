@@ -218,6 +218,8 @@ class Q_learning_agent(Agent):
         return chosen_action
     
     def best_action(self, state, actions):
+        if type(state) == dict:
+            state = self.env.encode_state(state)
         # select action with the largest value
         values = [self.Q[(state, action)] for action in actions]
         max_value = max(values)

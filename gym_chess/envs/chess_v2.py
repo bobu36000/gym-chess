@@ -141,7 +141,7 @@ class ChessEnvV2(gym.Env):
         end = "checkmate"
     ):
         # constants
-        self.moves_max = 149
+        self.moves_max = 99
         self.log = log
         self.initial_board = initial_board
         self.end = end
@@ -392,7 +392,7 @@ class ChessEnvV2(gym.Env):
         self.board = state.get("board")
         self.white_king_castle_is_possible = state.get("white_king_castle_is_possible")
         self.white_queen_castle_is_possible = state.get("white_queen_castle_is_possible")
-        self.black_king_castle_is_possible = state.get("black_king_castle_is_possible")
+        self.black_king_castle_is_possible = state.get("black_king_castle_is_possible") 
         self.black_queen_castle_is_possible = state.get("black_queen_castle_is_possible")
         self.white_king_is_checked = state.get("white_king_is_checked")
         self.black_king_is_checked = state.get("black_king_is_checked")

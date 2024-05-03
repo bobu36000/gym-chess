@@ -29,7 +29,7 @@ def plot_test_rewards(epoch_rewards, test_rewards, goal=100):
     plt.title("Reward over the epochs of training")
     plt.xlabel("Epoch")
     plt.ylabel("Total Reward")
-    plt.ylim(-20, 120)
+    plt.ylim(-100, 120)
     plt.grid(True)
     plt.show()
 
@@ -63,6 +63,6 @@ def plot_episode_lengths(train_lengths, test_lengths):
     plt.title("Episode lengths over the epochs of training")
     plt.xlabel("Epoch")
     plt.ylabel("Episode Length")
-    plt.ylim(7,21)
+    plt.ylim(5,80)
     plt.grid(True)
     plt.show()

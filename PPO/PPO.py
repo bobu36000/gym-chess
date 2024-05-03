@@ -47,7 +47,6 @@ class PPO(Agent):
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         # self.device = torch.device("cpu")
-        print(f"Device: {self.device}")
         
         self.critic = CriticNetwork(lr, channels, critic_layer_dims, kernel_size, stride).to(self.device)
         self.actor = ActorNetwork(lr, channels, actor_layer_dims, kernel_size, stride).to(self.device)
@@ -124,15 +123,12 @@ class PPO(Agent):
                 L_VF = ((advantages[batch] + values[batch] - critic_value)**2).mean()
 
                 loss = L_clip + self.c1 * L_VF - dist.entropy().mean() * self.c2
-                # print(f"Clip={L_clip}, L_VF={L_VF}, entropy={dist.entropy().mean()}")
 
                 self.actor.optimizer.zero_grad()
                 self.critic.optimizer.zero_grad()
                 loss.backward()
                 self.actor.optimizer.step()
                 self.critic.optimizer.step()
-            # self.actor.scheduler.step()
-            # self.critic.scheduler.step()
         self.c2 = max(1.0, self.c2 * 0.999)
         self.memory.clear()
 
@@ -254,7 +250,6 @@ class PPO(Agent):
         action_mask[:,actions] = 1
 
         distribution = self.actor(slice, action_mask)
-        # print(f"Entropy={distribution.entropy().mean()}")
 
         value = self.critic(slice)
         action = distribution.sample()
@@ -264,6 +259,10 @@ class PPO(Agent):
         value = torch.squeeze(value).item()
 
         return action, probs, value
+
+    def best_action(self, state, actions):
+        action, _, _ = self.choose_action(state, actions)
+        return action
 
     def one_episode(self):
         environment = ChessEnvV2(player_color=self.env.player, opponent=self.env.opponent, log=False, initial_board=self.env.initial_board, end = self.env.end)
@@ -346,7 +345,6 @@ class PPO(Agent):
 
             available_actions = self.env.possible_actions
             action, probs, value = self.choose_action(self.env.state, available_actions)
-            print(f"Probability of chose action = {np.exp(probs)}, value of state = {value}")
             
             _, white_reward, _, _ = self.env.white_step(action)
             self.env.render()

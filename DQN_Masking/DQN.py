@@ -178,11 +178,7 @@ class DQN_Masking(DQN):
 
         best_action = actions[best_index.item()]
 
-        # self.env.render_grid(grid=self.env.board_to_grid(board=state['board']))
-        # for i in range(len(actions)):
-        #     print(f"{self.env.action_to_move(actions[i])}: {action_values[i]}")
-
-        return best_action, None
+        return best_action
     
     def choose_egreedy_action(self, state, actions):
         return super().choose_egreedy_action(state, actions)
